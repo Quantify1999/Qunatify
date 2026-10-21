@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin | Quantify</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<body class="admin">
+<div class="topbar"><a class="logo" href="dashboard.html">Quantify · Admin</a><div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
+<div class="wrap" id="main" style="display:none">
+
+<div class="box"><h3>Sections (dashboard categories)</h3>
+<div class="row"><input type="text" id="sec-name" placeholder="Naya section naam (e.g. SSC CGL Maths Tier-I)"><button class="btn-s" id="sec-add">Add</button></div>
+<div id="sec-list"></div></div>
+
+<div class="box"><h3>Naya test banao</h3>
+<div class="row"><input type="text" id="t-title" placeholder="Test title (e.g. CGL Mains Maths Test 1)"></div>
+<div class="row"><label>Section <select id="t-sec"></select></label></div>
+<div class="row"><label>Time (min) <input type="number" id="t-dur" value="60" min="1" style="width:90px"></label>
+<label>Sahi (+) <input type="number" id="t-pos" value="2" step="0.25" style="width:80px"></label>
+<label>Galat (−) <input type="number" id="t-neg" value="0.5" step="0.25" min="0" style="width:80px"></label></div>
+<div class="row"><label><input type="checkbox" id="t-free"> Free test</label><label><input type="checkbox" id="t-pub"> Publish</label><button class="btn-s" id="t-add">Create</button></div></div>
+
+<div class="box"><h3>Tests (time &amp; marking yahin se badlo)</h3><div id="t-list"></div>
+<p style="font-size:12px;color:var(--muted);margin-top:8px">Marking badalne ka asar sirf aage submit hone wale attempts pe padega.</p></div>
+
+<div class="box"><h3>Excel upload (Hindi + English)</h3>
+<div class="row"><select id="q-test"></select></div>
+<p style="font-size:13px;color:var(--muted);margin:6px 0">Columns: <b>question_text, option_a-d, correct_answer, explanation, has_diagram, image_url, topic, difficulty</b>. English pehle, Hindi neeche (<b>प्रश्न:</b> se) wala format auto split hoga. Excel ke positive/negative marking columns ignore hote hain, test ki settings use hoti hain.</p>
+<div class="row"><input type="file" id="q-file" accept=".xlsx,.xls,.csv"><button class="btn-s" id="q-up">Upload</button><span id="q-msg"></span></div></div>
+
+<div class="box"><h3>Questions edit / image</h3>
+<div class="row"><select id="m-test"></select><button class="btn-s red" id="q-clear">Saare questions delete</button></div>
+<div id="q-list">Test chuno</div></div>
+</div>
+
+<div class="modal" id="modal"><div class="mbox">
+<h3 id="e-title">Edit question</h3>
+<h4>Question</h4>
+<textarea id="e-q" placeholder="English"></textarea><textarea id="e-qh" placeholder="Hindi"></textarea>
+<h4>Options (English | Hindi)</h4>
+<div class="g2"><input type="text" id="e-a" placeholder="A"><input type="text" id="e-ah" placeholder="A (Hindi, optional)">
+<input type="text" id="e-b" placeholder="B"><input type="text" id="e-bh" placeholder="B (Hindi)">
+<input type="text" id="e-c" placeholder="C"><input type="text" id="e-ch" placeholder="C (Hindi)">
+<input type="text" id="e-d" placeholder="D"><input type="text" id="e-dh" placeholder="D (Hindi)"></div>
+<div class="row"><label>Sahi answer <select id="e-ans" style="width:80px"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></label>
+<label><input type="checkbox" id="e-diag"> Diagram wala</label></div>
+<h4>Explanation</h4>
+<textarea id="e-ex" placeholder="English"></textarea><textarea id="e-exh" placeholder="Hindi"></textarea>
+<h4>Image (DI / diagram)</h4>
+<img id="e-prev" class="prev" style="display:none" alt="">
+<div class="row"><input type="file" id="e-img" accept="image/*"><button class="btn-s red" id="e-rm" type="button">Image hatao</button></div>
+<div class="row" style="justify-content:flex-end"><span id="e-msg"></span><button class="btn-s red" id="e-del" type="button">Delete</button><button class="btn-s ghost" id="e-x" type="button">Cancel</button><button class="btn-s" id="e-save" type="button">Save</button></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script>
+</body></html>
