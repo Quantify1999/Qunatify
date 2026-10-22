@@ -51,3 +51,57 @@
   .tmain{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .tf{max-width:1100px;margin:0 auto;border-radius:12px 12px 0 0}
 }
+
+/* ===== CBT-style extras (desktop screen like Testbook/SSC) ===== */
+.tl,.dlogo,.dzoom,.dcent,#full,.cbt1,.parttab,.qh,.secname,.ana,.dsel,.dbtn,.do,.rd{display:none}
+.qtext{font-size:calc(16px*var(--z,1))}.opt{font-size:calc(15px*var(--z,1))}
+@media(min-width:900px){
+  .tbody{display:flex;flex-direction:column;padding-bottom:30px}
+  .th{order:1;background:var(--card);color:var(--text);border-bottom:1px solid var(--line);padding:10px 18px;gap:12px}
+  .th .ic,.th .theme-btn{color:var(--text);border-color:var(--line)}
+  .th .sub{display:none}
+  .dlogo{display:block;order:1;font-weight:800;font-size:22px;color:var(--brand);line-height:1.1}
+  .dlogo small{display:block;font-size:11px;font-weight:500;color:var(--muted);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dzoom{display:flex;gap:6px;order:2}
+  .dzoom button{background:#1d4ed8;color:#fff;border:0;border-radius:4px;padding:6px 10px;font-size:12px;cursor:pointer}
+  .dcent{display:block;order:3;flex:1;text-align:center;font-size:13px;color:var(--muted);min-width:0}
+  .dcent b{display:block;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #full{display:inline-flex;order:4;align-items:center;justify-content:center}
+  #pause{order:5}
+  .th .tt{order:6;flex:none;text-align:center;background:#fff3b0;border-radius:4px;padding:4px 16px}
+  .tt .tl{display:block;font-size:12px;color:#333}.tt #timer{font-size:19px;color:#b91c1c}
+  .th .theme-btn{order:7}
+  #lang,#menu{display:none!important}
+  .cbt1{display:flex;order:2;justify-content:space-between;align-items:center;max-width:1280px;width:100%;margin:0 auto;padding:12px 16px 0;font-size:12px;font-weight:700}
+  .cbt1 a{cursor:pointer;margin-right:18px;text-decoration:underline}
+  #lnkSym{color:#0b6bcb}#lnkIns{color:#d9480f}
+  .cbt1 .tot b{background:#fff3b0;color:#000;padding:2px 7px;margin-left:4px}
+  .cbt2{display:flex;order:3;max-width:1280px;width:100%;margin:0 auto;padding:10px 16px 0;align-items:center;gap:16px}
+  .parttab{display:inline-block;background:#16a34a;color:#fff;font-weight:700;font-size:13px;padding:6px 14px;border-radius:4px}
+  .cbt2 .tf{position:static;flex:1;border:0;background:none;padding:0;margin:0;border-radius:0;justify-content:center;gap:8px}
+  .fb{flex:none;background:#1d4ed8;color:#fff;border:0;border-radius:4px;padding:8px 18px;font-size:13px}
+  .fb.pr{background:#1d4ed8}.dbtn{display:inline-block}
+  .mo{display:none}.do{display:inline}
+  .tlayout{order:4;max-width:1280px;width:100%;margin:0 auto;grid-template-columns:1fr 330px;gap:16px;padding:12px 16px}
+  .qh{display:block;padding:14px 16px 0;font-weight:700;background:var(--card)}
+  .qn{display:none}.qtm{border:0}
+  .dsel{width:auto;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px}
+  .dsel[data-on]{display:inline-block}
+  #opts{padding:0}
+  .opt{border-radius:0;margin-bottom:0;border-width:0 0 1px 0;padding:15px 16px;align-items:center}
+  .opt.sel{background:#2f6fed14;border-color:var(--line)}
+  .rd{display:inline-block;width:16px;height:16px;border:1.5px solid #888;border-radius:50%;flex:none}
+  .opt.sel .rd{border-color:var(--brand);background:radial-gradient(var(--brand) 45%,transparent 50%)}
+  .opt .no{display:none}
+  .secname{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:12px;font-size:14px}
+  .tri{border-left:14px solid #1fa2c4;border-top:9px solid transparent;border-bottom:9px solid transparent}
+  .phead,.sub-btn{display:none}
+  .pgrid{grid-template-columns:repeat(6,1fr);gap:6px}
+  .pb{background:#1a2fe0;color:#fff;height:26px;border-radius:2px;font-size:12px}
+  .leg i{background:#1a2fe0}
+  .pb.m{border-radius:2px}
+  .ana{display:table;width:100%;border-collapse:collapse;border:1px solid #999;font-size:13px;margin-top:6px}
+  .ana th{background:#bbb;color:#000;padding:5px}
+  .ana td{border:1px solid #999;padding:4px 8px}
+  .ana td.y{background:#fff3b0;color:#000;text-align:center;width:48px}
+}
