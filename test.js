@@ -5,6 +5,7 @@ const hms = s => { s = Math.max(0, s | 0); return pad(Math.floor(s / 3600)) + ':
 const ms = s => { s = Math.max(0, s | 0); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); };
 const mk = n => Number.isInteger(n * 10) ? Number(n).toFixed(1) : Number(n).toFixed(2);
 
+let secName = 'Maths';
 let test, att, qs = [], idx = 0, ans = {}, qt = {}, marked = new Set(), bm = new Set();
 let rem = 0, last = 0, active = false, done = false, hasHi = false, lang = localStorage.getItem('q-lang') || 'en';
 
@@ -33,8 +34,15 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = '
   Object.keys(sv).forEach(k => { if (k[0] !== '_') ans[k] = sv[k]; });
   qt = att.q_times || {};
   rem = att.remaining_sec ?? test.duration_min * 60;
-  $('ttl').textContent = test.title;
-  if (hasHi) $('lang').style.display = '';
+  const [{ data: sx }, { data: pf }] = await Promise.all([
+    test.section_id ? sb.from('sections').select('name').eq('id', test.section_id).single() : Promise.resolve({ data: null }),
+    sb.from('profiles').select('name').single()
+  ]);
+  secName = (sx && sx.name) || 'Maths';
+  ['ttl', 'ttl2', 'ttl3'].forEach(i => $(i).textContent = test.title);
+  $('cand').textContent = 'Candidate: ' + ((pf && pf.name) || '');
+  $('ptab').textContent = secName; $('secname').textContent = secName;
+  if (hasHi) { $('lang').style.display = ''; $('langsel').dataset.on = '1'; $('langsel').value = lang; }
   $('leg').innerHTML = '<span><i class="a"></i>Answered</span><span><i class="v"></i>Not Answered</span><span><i class="m"></i>Marked</span><span><i></i>Not Visited</span>';
   go(0); last = Date.now(); active = true;
   setInterval(tick, 1000);
@@ -63,11 +71,11 @@ function pick(q, l) { // language fallback
 }
 function render() {
   const q = qs[idx], v = pick(q, lang);
-  $('qno').textContent = idx + 1;
+  $('qno').textContent = idx + 1; $('qh').textContent = idx + 1;
   $('mks').innerHTML = `<span class="p">+${mk(+test.pos_marks)}</span><span class="n">−${mk(+test.neg_marks)}</span>`;
   $('star').textContent = bm.has(q.id) ? '★' : '☆'; $('star').classList.toggle('on', bm.has(q.id));
   $('qtext').innerHTML = esc(v.t) + (q.image_url ? `<img src="${q.image_url}" alt="diagram">` : '');
-  $('opts').innerHTML = v.o.map((o, i) => `<div class="opt${ans[q.id] === i ? ' sel' : ''}" data-i="${i}"><span class="no">${i + 1}.</span><span>${esc(o)}</span></div>`).join('');
+  $('opts').innerHTML = v.o.map((o, i) => `<div class="opt${ans[q.id] === i ? ' sel' : ''}" data-i="${i}"><span class="rd"></span><span class="no">${i + 1}.</span><span>${esc(o)}</span></div>`).join('');
   document.querySelectorAll('.opt').forEach(el => el.onclick = () => { ans[q.id] = +el.dataset.i; render(); });
   paint(); palette();
 }
@@ -78,12 +86,20 @@ function stat(q, i) {
 function palette() {
   $('pgrid').innerHTML = qs.map((q, i) => `<button class="pb${stat(q, i)}" data-i="${i}">${i + 1}</button>`).join('');
   document.querySelectorAll('.pb').forEach(b => b.onclick = () => { go(+b.dataset.i); closePal(); });
+  updAna();
+}
+function updAna() {
+  const a = qs.filter(q => ans[q.id] !== undefined).length, m = qs.filter(q => marked.has(q.id)).length;
+  $('ansTotal').textContent = a;
+  $('ana').innerHTML = `<tr><th colspan="2">${esc(secName)} Analysis</th></tr><tr><td>Answered</td><td class="y">${a}</td></tr><tr><td>Not Answered</td><td class="y">${qs.length - a}</td></tr><tr><td>Mark for Review</td><td class="y">${m}</td></tr>`;
 }
 const openPal = () => { $('pal').classList.add('on'); $('bd').classList.add('on'); };
 const closePal = () => { $('pal').classList.remove('on'); $('bd').classList.remove('on'); };
 $('menu').onclick = openPal; $('pclose').onclick = closePal; $('bd').onclick = closePal;
 
-$('lang').onclick = () => { lang = lang === 'en' ? 'hi' : 'en'; localStorage.setItem('q-lang', lang); render(); toast(lang === 'hi' ? 'हिन्दी' : 'English'); };
+function setLang(l) { lang = l; localStorage.setItem('q-lang', l); $('langsel').value = l; render(); }
+$('lang').onclick = () => setLang(lang === 'en' ? 'hi' : 'en');
+$('langsel').onchange = e => setLang(e.target.value);
 $('star').onclick = () => { const id = qs[idx].id; bm.has(id) ? bm.delete(id) : bm.add(id); render(); };
 
 function next() { if (idx < qs.length - 1) go(idx + 1); else { render(); toast('Ye last question hai'); } save(false); }
@@ -115,3 +131,29 @@ async function doSubmit() {
   location.href = 'result.html?a=' + att.id;
 }
 addEventListener('beforeunload', e => { if (!done && active) { save(false); e.preventDefault(); e.returnValue = ''; } });
+
+// ---- desktop CBT extras ----
+let zoom = 1;
+const setZ = d => { zoom = Math.min(1.6, Math.max(0.8, +(zoom + d).toFixed(2))); document.documentElement.style.setProperty('--z', zoom); };
+$('zin').onclick = () => setZ(0.1); $('zout').onclick = () => setZ(-0.1);
+$('full').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+$('submit2').onclick = () => $('submit').click();
+function info(kind) {
+  if (!test) return;
+  if (kind === 'sym') {
+    $('ihead').textContent = 'Symbols';
+    $('ibody').innerHTML = '<div class="leg" style="grid-template-columns:1fr;font-size:14px;color:var(--text)"><span><i></i>Not Visited</span><span><i class="v"></i>Not Answered</span><span><i class="a"></i>Answered</span><span><i class="m"></i>Marked for Review</span></div>';
+  } else {
+    $('ihead').textContent = 'Instructions';
+    $('ibody').innerHTML = `<ol style="padding-left:18px"><li>Total duration: <b>${test.duration_min} minutes</b>.</li>
+      <li>Correct answer: <b>+${mk(+test.pos_marks)}</b>, wrong answer: <b>−${mk(+test.neg_marks)}</b>, not attempted: 0.</li>
+      <li>Click an option to select it. Use <b>Clear Response</b> to remove your answer.</li>
+      <li><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review</b> flags the question and moves ahead.</li>
+      <li>Use the question palette to jump to any question.</li>
+      <li>You can pause the test (timer stops) and resume later.</li>
+      <li>Click <b>Submit Test</b> when done. The test is submitted automatically when time ends.</li></ol>`;
+  }
+  $('iov').classList.add('on');
+}
+$('lnkSym').onclick = () => info('sym'); $('lnkIns').onclick = () => info('ins');
+$('iclose').onclick = () => $('iov').classList.remove('on');
