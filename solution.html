@@ -1,11 +1,45 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Solutions | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="result.css"><script src="theme.js"></script></head>
-<body>
-<header class="rh"><a class="bk" href="dashboard.html">←</a><span class="ttl" id="ttl">Solutions</span>
-<button class="ic" id="lang" style="display:none"><b>E</b>|<b>अ</b></button><button class="theme-btn ic" type="button">🌙</button></header>
-<nav class="tabs" id="tabs"></nav>
-<div class="rw"><div class="chips" id="chips"></div><div id="app">Loading...</div></div>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Solutions | Quantify</title>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="test.css"><link rel="stylesheet" href="result.css">
+<script src="theme.js"></script></head>
+<body class="tbody">
+<header class="th">
+  <a class="ic" id="back" href="dashboard.html" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px">←</a>
+  <div class="tt"><div style="font-size:16px;font-weight:700">Solutions</div><div class="sub" id="ttl">Loading...</div></div>
+  <button class="ic" id="lang" style="display:none" title="Language"><b>E</b>|<b>अ</b></button>
+  <button class="theme-btn ic" type="button">🌙</button>
+  <button class="ic" id="menu" title="Question palette">☰</button>
+</header>
+
+<div class="tlayout">
+  <main class="tmain">
+    <div class="qhead">
+      <span class="qn" id="qno">1</span><span class="qtm" id="qtime">00:00</span>
+      <span id="chip"></span><span class="sp"></span>
+    </div>
+    <div class="qtext" id="qtext"></div>
+    <div id="opts"></div>
+    <div id="ex"></div>
+  </main>
+
+  <aside class="pal" id="pal">
+    <div class="phead"><b>Question Palette</b><button class="ic cl" id="pclose">✕</button></div>
+    <div class="leg" id="leg"></div>
+    <div class="pgrid" id="pgrid"></div>
+    <div id="attw" style="margin-bottom:12px"></div>
+    <a class="btn-s ghost" id="toRes" href="#" style="display:block;text-align:center;margin-bottom:8px">Analysis</a>
+    <a class="btn-s ghost" id="toLb" href="#" style="display:block;text-align:center">Leaderboard</a>
+  </aside>
+</div>
+<div class="bd" id="bd"></div>
+
+<footer class="tf">
+  <button class="fb" id="prev">← Previous</button>
+  <button class="fb pr" id="next">Next →</button>
+</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="supabase.js"></script><script src="common.js"></script><script src="solution.js"></script>
 </body></html>
