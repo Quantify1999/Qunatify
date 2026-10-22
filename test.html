@@ -6,17 +6,37 @@
 <body class="tbody">
 <header class="th">
   <button class="ic pbtn" id="pause" title="Pause">❚❚</button>
-  <div class="tt"><div id="timer">--:--:--</div><div class="sub" id="ttl">Loading...</div></div>
+  <div class="tt"><span class="tl">Time Left</span><div id="timer">--:--:--</div><div class="sub" id="ttl">Loading...</div></div>
+  <div class="dlogo">Quantify<small id="ttl2"></small></div>
+  <div class="dzoom"><button id="zin" type="button">Zoom (+)</button><button id="zout" type="button">Zoom (-)</button></div>
+  <div class="dcent"><b id="ttl3"></b><span id="cand"></span></div>
+  <button class="ic" id="full" title="Fullscreen">⛶</button>
   <button class="ic" id="lang" style="display:none" title="Language"><b>E</b>|<b>अ</b></button>
   <button class="theme-btn ic" type="button">🌙</button>
   <button class="ic" id="menu" title="Question palette">☰</button>
 </header>
 
+<div class="cbt1">
+  <div><a id="lnkSym">SYMBOLS</a><a id="lnkIns">INSTRUCTIONS</a></div>
+  <div class="tot">Total Questions Answered: <b id="ansTotal">0</b></div>
+</div>
+<div class="cbt2">
+  <span class="parttab" id="ptab">Maths</span>
+  <footer class="tf">
+    <button class="fb" id="mark"><span class="mo">Mark &amp; Next</span><span class="do">Mark for Review</span></button>
+    <button class="fb" id="clear">Clear Response</button>
+    <button class="fb pr" id="next">Save &amp; Next</button>
+    <button class="fb dbtn" id="submit2">Submit Test</button>
+  </footer>
+</div>
+
 <div class="tlayout">
   <main class="tmain">
+    <div class="qh">Question No. <span id="qh">1</span></div>
     <div class="qhead">
       <span class="qn" id="qno">1</span><span class="qtm" id="qtime">00:00</span>
       <span class="mks" id="mks"></span><span class="sp"></span>
+      <select class="dsel" id="langsel"><option value="en">English</option><option value="hi">Hindi</option></select>
       <button class="star" id="star" title="Bookmark">☆</button>
     </div>
     <div class="qtext" id="qtext"></div>
@@ -24,23 +44,20 @@
   </main>
 
   <aside class="pal" id="pal">
+    <div class="secname"><span class="tri"></span><span id="secname"></span></div>
     <div class="phead"><b>Question Palette</b><button class="ic cl" id="pclose">✕</button></div>
     <div class="leg" id="leg"></div>
     <div class="pgrid" id="pgrid"></div>
+    <table class="ana" id="ana"></table>
     <button class="btn-s sub-btn" id="submit">Submit Test</button>
   </aside>
 </div>
 <div class="bd" id="bd"></div>
 
-<footer class="tf">
-  <button class="fb" id="mark">Mark &amp; Next</button>
-  <button class="fb" id="clear">Clear Response</button>
-  <button class="fb pr" id="next">Save &amp; Next</button>
-</footer>
-
 <div class="ov" id="pov"><div class="ovb"><h2>Test Paused ⏸</h2><p>Timer ruka hua hai.</p><p class="big" id="ptime"></p><button class="btn-s" id="resume">▶ Resume</button></div></div>
 <div class="ov" id="cov"><div class="ovb"><h3>Test submit karein?</h3><div class="sum" id="sum"></div>
 <div class="row" style="justify-content:center;gap:10px"><button class="btn-s ghost" id="cno">Wapas</button><button class="btn-s" id="cyes">Haan, Submit</button></div></div></div>
+<div class="ov" id="iov"><div class="ovb" style="max-width:560px;text-align:left"><h3 id="ihead"></h3><div id="ibody" style="font-size:14px;line-height:1.6;margin:12px 0"></div><button class="btn-s" id="iclose">Close</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
