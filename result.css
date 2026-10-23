@@ -14,7 +14,7 @@
 .c1,.c3{background:var(--card);border-radius:12px;margin-bottom:12px;border:1px solid var(--line)}
 .c1{display:flex;align-items:center;gap:12px;padding:16px}
 .c1 b,.ln b{font-weight:600}
-.v{margin-left:auto;font-size:20px;font-weight:800}.v small{font-size:14px;font-weight:500;color:var(--muted)}
+.c1 .v,.r1 .v,.ln .v{margin-left:auto;font-size:20px;font-weight:800}.c1 .v small,.r1 .v small,.ln .v small{font-size:14px;font-weight:500;color:var(--muted)}
 .ico{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#7c4dff22;font-size:18px;flex:none}
 .ico.r{background:#dc262622}.ico.g{background:#16a34a22}.ico.b{background:#2f6fed22}.ico.o{background:#f59e0b22}
 .c2{background:var(--card);border-radius:12px;margin-bottom:12px;border:1px solid var(--line);overflow:hidden}
@@ -72,3 +72,10 @@
 .exb{margin:0 14px 14px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:15px;line-height:1.6}
 .chip2{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
 .chip2.ok{background:#16a34a22;color:var(--ok)}.chip2.bad{background:#dc262622;color:var(--bad)}.chip2.skip{background:#6b758922;color:var(--muted)}
+
+/* solution page header (desktop) */
+.sol .th .tt{background:none;padding:0;flex:1;text-align:left;border-radius:0}
+.sol .th .sub{display:block}
+/* solution palette: skipped = grey */
+.sol .pb:not(.a):not(.v){background:#c9ced9;color:#1b2437}
+.sol .leg i:not(.a):not(.v){background:#c9ced9}
