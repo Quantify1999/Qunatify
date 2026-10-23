@@ -15,7 +15,7 @@ const mk = n => Number.isInteger(n * 10) ? Number(n).toFixed(1) : Number(n).toFi
   cur = atts.find(x => x.id === qp('a')) || atts[0];
   idx = Math.min(Math.max((+qp('q') || 1) - 1, 0), sols.length - 1);
   $('ttl').textContent = test ? test.title : '';
-  if (sols.some(x => x.q_text_hi)) $('lang').style.display = '';
+  if (sols.some(x => x.q_text_hi)) { $('lang').style.display = ''; $('langsel').dataset.on = '1'; $('langsel').value = lang; }
   render();
 })();
 
@@ -55,8 +55,11 @@ function render() {
 const go = d => { const n = idx + d; if (n < 0 || n >= sols.length) return; idx = n; render(); window.scrollTo(0, 0); };
 $('prev').onclick = () => go(-1); $('next').onclick = () => go(1);
 addEventListener('keydown', e => { if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); });
-$('lang').onclick = () => { lang = lang === 'en' ? 'hi' : 'en'; localStorage.setItem('q-lang', lang); render(); };
+function setLang(l) { lang = l; localStorage.setItem('q-lang', l); $('langsel').value = l; render(); }
+$('lang').onclick = () => setLang(lang === 'en' ? 'hi' : 'en');
+$('langsel').onchange = e => setLang(e.target.value);
 
 const openPal = () => { $('pal').classList.add('on'); $('bd').classList.add('on'); };
 const closePal = () => { $('pal').classList.remove('on'); $('bd').classList.remove('on'); };
 $('menu').onclick = openPal; $('pclose').onclick = closePal; $('bd').onclick = closePal;
+  
