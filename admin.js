@@ -17,10 +17,11 @@ async function loadTests() {
   $('t-sec').innerHTML = '<option value="">— Section chuno —</option>' + secOpts(null);
   renderSecs();
   const cnt = {}; (qs || []).forEach(q => cnt[q.test_id] = (cnt[q.test_id] || 0) + 1);
-  const opts = (tests || []).map(t => `<option value="${t.id}">${esc(t.title)}</option>`).join('');
-  const keepM = $('m-test').value;
-  $('q-test').innerHTML = opts; $('m-test').innerHTML = opts;
+  const opts = (tests || []).map(t => `<option value="${t.id}">${esc(t.title)} (${cnt[t.id] || 0} Qs)</option>`).join('');
+  const keepM = $('m-test').value, keepQ = $('q-test').value;
+  $('q-test').innerHTML = '<option value="">— Test chuno —</option>' + opts; $('m-test').innerHTML = opts;
   if (keepM) $('m-test').value = keepM;
+  if (keepQ) $('q-test').value = keepQ;
   $('t-list').innerHTML = (tests || []).map(t => `<div class="trow"><b style="flex:1;min-width:140px">${esc(t.title)} <small style="color:var(--muted)">(${cnt[t.id] || 0} Qs)</small></b>
     <select id="s-${t.id}" style="width:auto;padding:6px"><option value="">(no section)</option>${secOpts(t.section_id)}</select>
     <label>Min <input type="number" id="d-${t.id}" value="${t.duration_min}"></label>
@@ -55,11 +56,13 @@ $('q-file').onchange = async e => {
   $('q-msg').textContent = rows.length + ' rows mile';
 };
 $('q-up').onclick = async () => {
-  const test_id = $('q-test').value; if (!test_id) return alert('Pehle test banao');
+  const test_id = $('q-test').value; if (!test_id) return alert('Pehle dropdown se test chuno jisme questions upload karne hain');
   if (!rows || !rows.length) return alert('Excel file chuno');
   const ok = [], bad = [];
   rows.forEach((r, i) => { const n = normRow(r); n ? ok.push(n) : bad.push(i + 2); });
   if (bad.length) return alert('In Excel rows mein question/option/answer check karo: ' + bad.slice(0, 20).join(', '));
+  const tname = $('q-test').selectedOptions[0].textContent;
+  if (!confirm(`${ok.length} questions is test mein upload honge:\n\n${tname}\n\nSahi hai?`)) return;
   const { count } = await sb.from('questions').select('*', { count: 'exact', head: true }).eq('test_id', test_id);
   const payload = ok.map((q, i) => ({ ...q, test_id, position: (count || 0) + i + 1 }));
   for (let i = 0; i < payload.length; i += 100) {
@@ -67,7 +70,7 @@ $('q-up').onclick = async () => {
     if (error) return alert(error.message);
   }
   const hi = ok.filter(q => q.q_text_hi).length, dg = ok.filter(q => q.has_diagram && !q.image_url).length;
-  $('q-msg').textContent = `✅ ${ok.length} questions (${hi} Hindi ke saath, ${dg} mein image baaki)`;
+  $('q-msg').textContent = `✅ ${ok.length} questions upload hue (${hi} Hindi ke saath, ${dg} mein image baaki)`;
   rows = null; $('q-file').value = ''; loadTests();
 };
 
@@ -151,4 +154,5 @@ async function saveSec(id) {
 async function delSec(id) {
   if (!confirm('Section delete hoga. Uske tests delete nahi honge, bas "no section" ho jayenge. Pakka?')) return;
   await sb.from('sections').delete().eq('id', id); loadTests();
-}
+                                                        }
+  
