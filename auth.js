@@ -45,3 +45,10 @@ $('form').addEventListener('submit', async e => {
   }
   busy(false);
 });
+
+// Google login (login + signup dono pages)
+if ($('gbtn')) $('gbtn').onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: new URL('dashboard.html', location.href).href } });
+  if (error) show('err', error.message);
+};
+  
