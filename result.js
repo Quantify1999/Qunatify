@@ -1,48 +1,107 @@
-(async () => {
-  if (!await requireAuth()) return;
-  const a = qp('a'); if (!a) { location.href = 'dashboard.html'; return; }
-  const { data: at } = await sb.from('attempts').select('*').eq('id', a).single();
-  if (!at || at.status !== 'submitted') { location.href = 'dashboard.html'; return; }
-  const [{ data: test }, { data: st }, { data: rs }, { data: all }] = await Promise.all([
-    sb.from('tests').select('*').eq('id', at.test_id).single(),
-    sb.from('test_stats').select('*').eq('test_id', at.test_id).single(),
-    sb.rpc('result_stats', { a }),
-    sb.from('attempts').select('id,attempt_no,status').eq('test_id', at.test_id).order('attempt_no')
-  ]);
-  const r = (rs && rs[0]) || {};
-  const first = (all || []).find(x => x.attempt_no === 1);
-  $('ttl').textContent = test.title;
-  tabs('a', at.test_id, a);
+/* result / solution / leaderboard / dashboard cards */
+.rh{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;background:#1b1f27;color:#fff;padding:12px 14px}
+.rh .bk{color:#fff;font-size:22px;text-decoration:none;padding-right:4px}
+.rh .ttl{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh .ic{background:none;border:1px solid #ffffff30;color:#fff;border-radius:8px;min-width:36px;height:36px;font-size:15px;cursor:pointer;padding:0 8px}
+.rh .theme-btn{border-color:#ffffff30;color:#fff}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:19}
+.tabs a{flex:1;text-align:center;padding:14px 4px;color:var(--muted);font-weight:600;font-size:14px;border-bottom:3px solid transparent}
+.tabs a.on{color:var(--text);border-color:var(--text)}
+.rw{max-width:720px;margin:0 auto;padding:16px}
+.reat{display:block;text-align:center;background:var(--card);border:1px solid var(--line);color:var(--brand);font-weight:700;border-radius:99px;padding:15px;margin-bottom:18px}
+.note{background:#f59e0b1f;color:var(--text);border-radius:10px;padding:11px 13px;font-size:13px;margin-bottom:14px}
+.qsh{font-size:12px;letter-spacing:.8px;color:var(--muted);font-weight:700;margin:8px 0 10px}
+.c1,.c3{background:var(--card);border-radius:12px;margin-bottom:12px;border:1px solid var(--line)}
+.c1{display:flex;align-items:center;gap:12px;padding:16px}
+.c1 b,.ln b{font-weight:600}
+.c1 .v,.r1 .v,.ln .v{margin-left:auto;font-size:20px;font-weight:800}.c1 .v small,.r1 .v small,.ln .v small{font-size:14px;font-weight:500;color:var(--muted)}
+.ico{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#7c4dff22;font-size:18px;flex:none}
+.ico.r{background:#dc262622}.ico.g{background:#16a34a22}.ico.b{background:#2f6fed22}.ico.o{background:#f59e0b22}
+.c2{background:var(--card);border-radius:12px;margin-bottom:12px;border:1px solid var(--line);overflow:hidden}
+.c2 .r1{display:flex;align-items:center;gap:12px;padding:16px}
+.c2 .r2{display:flex;justify-content:space-around;padding:12px;background:var(--bg);font-size:13px;color:var(--muted)}
+.c2 .r2 b{color:var(--text)}
+.bar{height:8px;background:#7c4dff22;border-radius:9px;margin:0 16px 16px;overflow:hidden}.bar i{display:block;height:100%;background:#7c4dff;border-radius:9px}
+.ln{display:flex;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid var(--line)}
+.ln:last-child{border:0}
+/* solutions */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.chp{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:99px;padding:7px 14px;font-size:13px;cursor:pointer}
+.chp.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.chips select{width:auto;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.sc{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.sh{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.sh .qn{background:#6b7589;color:#fff;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.tag2{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px}
+.tag2.ok{background:#16a34a22;color:var(--ok)}.tag2.bad{background:#dc262622;color:var(--bad)}.tag2.skip{background:#6b758922;color:var(--muted)}
+.sq{padding:14px;line-height:1.55}.sq img{display:block;max-width:100%;margin-top:10px;border-radius:8px;border:1px solid var(--line)}
+.so{display:flex;gap:10px;align-items:flex-start;margin:0 14px 10px;padding:12px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+.so .no{color:var(--muted);min-width:18px}
+.so.ok{background:#16a34a1f;border-color:var(--ok)}.so.bad{background:#dc26261f;border-color:var(--bad)}
+.so em{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;white-space:nowrap}
+.so.ok em{color:var(--ok)}.so.bad em{color:var(--bad)}
+.ex{margin:6px 14px 14px;padding:12px;background:var(--bg);border-radius:8px;font-size:14px;line-height:1.55}
+/* leaderboard */
+.lt{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+.lt th{font-size:12px;color:var(--muted);text-align:left;padding:10px 12px;background:var(--bg)}
+.lt td{padding:12px;border-top:1px solid var(--line)}
+.lt tr.me td{background:#2f6fed1f;font-weight:700}
+.lt .rk{font-weight:800;width:54px}
+/* dashboard cards (Testbook style) */
+.tc{background:var(--card);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden;border:1px solid var(--line)}
+.tc .bd2{padding:16px 16px 14px}
+.bg2{display:inline-block;font-size:12px;font-weight:800;padding:3px 9px;border-radius:5px;margin-bottom:10px}
+.bg2.free{background:#16c784;color:#fff}.bg2.paid{background:#f59e0b;color:#fff}.bg2.unl{background:#7c4dff;color:#fff}
+.tc h4{font-size:17px;margin-bottom:8px;line-height:1.3}
+.tc .mt{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.tc .mt a,.tc .mt button{color:var(--brand);font-weight:700;background:none;border:0;cursor:pointer;font-size:14px;white-space:nowrap}
+.tc .pb2{height:6px;background:var(--line);border-radius:9px;margin-top:12px;overflow:hidden}.tc .pb2 i{display:block;height:100%;background:#16c784}
+.tc .ft{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg);font-size:13px;color:var(--muted)}
+.tc .ft a{color:var(--brand);font-weight:700}
+/* section chips */
+.chipbar{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;scrollbar-width:none}
+.chipbar::-webkit-scrollbar{display:none}
+.sch{flex:none;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:99px;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sch small{color:var(--muted);font-weight:500}
+.sch.on{background:var(--brand);border-color:var(--brand);color:#fff}.sch.on small{color:#ffffffcc}
+/* solution review (exam-style) */
+.opt{cursor:default}
+.opt.ok{background:#16a34a1f;border-color:var(--ok)}.opt.bad{background:#dc26261f;border-color:var(--bad)}
+.opt em{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;white-space:nowrap}
+.opt.ok em{color:var(--ok)}.opt.bad em{color:var(--bad)}
+.exb{margin:0 14px 14px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:15px;line-height:1.6}
+.chip2{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+.chip2.ok{background:#16a34a22;color:var(--ok)}.chip2.bad{background:#dc262622;color:var(--bad)}.chip2.skip{background:#6b758922;color:var(--muted)}
 
-  const sc = +at.score, tot = st.q_count * test.pos_marks;
-  const attempted = at.correct + at.wrong;
-  const acc = attempted ? at.correct / attempted * 100 : 0;
-  const canRe = (all || []).length === 1 && at.attempt_no === 1;
-  const pct = tot > 0 ? Math.max(0, Math.min(100, sc / tot * 100)) : 0;
-  const line = (ico, cls, lbl, val) => `<div class="ln"><span class="ico ${cls}">${ico}</span><b>${lbl}</b><span class="v" style="font-size:17px">${val}</span></div>`;
+/* solution page header (desktop) */
+.sol .th .tt{background:none;padding:0;flex:1;text-align:left;border-radius:0}
+.sol .th .sub{display:block}
+/* solution palette: skipped = grey */
+.sol .pb:not(.a):not(.v){background:#c9ced9;color:#1b2437}
+.sol .leg i:not(.a):not(.v){background:#c9ced9}
 
-  $('app').innerHTML = `
-    ${canRe ? `<a class="reat" href="test.html?id=${test.id}" onclick="return confirm('Reattempt sirf 1 baar milta hai. Shuru karein?')">Reattempt Test ➜</a>` : ''}
-    ${at.attempt_no === 2 ? `<div class="note">Ye aapka reattempt hai. Rank, percentile, average aur best score <b>original attempt</b> par based hain. <a href="result.html?a=${first.id}">Original result dekho</a></div>` : ''}
-    <div class="qsh">QUICK SUMMARY</div>
-    <div class="c1"><span class="ico r">🏁</span><b>Rank</b><span class="v">${r.rnk ?? '-'}<small>/${r.total ?? st.participants}</small></span></div>
-    <div class="c2">
-      <div class="r1"><span class="ico">🏆</span><b>Score</b><span class="v">${num(sc)}<small>/${num(tot)}</small></span></div>
-      <div class="bar"><i style="width:${pct}%"></i></div>
-      <div class="r2"><span>Average Score: <b>${num(r.avg_score)}</b></span><span>Best Score: <b>${num(r.best_score)}</b></span></div>
-    </div>
-    <div class="c3">
-      ${line('📊', '', 'Percentile', num(r.percentile) + ' %')}
-      ${line('🎯', 'g', 'Accuracy', num(acc) + ' %')}
-      ${line('📝', 'b', 'Qs. Attempted', `${attempted}<small>/${st.q_count}</small>`)}
-    </div>
-    <div class="qsh">DETAILED BREAKDOWN</div>
-    <div class="c3">
-      ${line('✅', 'g', 'Correct', at.correct)}
-      ${line('❌', 'r', 'Wrong', at.wrong)}
-      ${line('⏭', 'o', 'Unattempted', at.unattempted)}
-      ${line('⏱', 'b', 'Time Taken', `${mmss(at.time_taken)}<small> / ${test.duration_min}:00 min</small>`)}
-    </div>
-    <p style="font-size:12px;color:var(--muted);text-align:center">Marking: +${num(test.pos_marks)} sahi, −${num(test.neg_marks)} galat</p>`;
-})();
-      
+/* show-answer toggle + neutral states */
+.swt{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;flex:none;user-select:none}
+.swt input{display:none}
+.swt i{width:40px;height:22px;border-radius:99px;background:#9aa3b5;position:relative;transition:background .2s}
+.swt i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.swt input:checked + i{background:#16a34a}
+.swt input:checked + i::after{transform:translateX(18px)}
+.opt.mine{background:#2f6fed1f;border-color:var(--brand)}.opt.mine em{color:var(--brand)}
+.sol .pb.an:not(.a):not(.v){background:#2f6fed;color:#fff}
+.sol .leg i.an:not(.a):not(.v){background:#2f6fed}
+
+/* ===== solution page v3: top strip, stats ===== */
+.sol .th{flex-wrap:wrap}
+.strip{flex:0 0 100%;display:flex;gap:10px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.sc2{flex:none;width:38px;height:38px;border-radius:50%;border:2px solid transparent;color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+.sc2.ok{background:#16a34a}.sc2.bad{background:#dc4a5a}.sc2.skip{background:#6b7589}
+.sc2.cur{border-color:#fff;box-shadow:0 0 0 2px #2f6fed}
+.sol .qn{display:inline-flex!important}
+.sol .qn.ok{background:#16a34a}.sol .qn.bad{background:#dc4a5a}.sol .qn.skip{background:#6b7589}
+.sol .qhead{flex-wrap:wrap}
+.avgt{font-variant-numeric:tabular-nums}
+.qstat{display:flex;justify-content:space-between;gap:10px;padding:14px;margin:4px 14px 8px;font-size:14px;color:var(--muted)}
+.qstat b{color:var(--text)}
+@media(min-width:900px){.strip{display:none}}
