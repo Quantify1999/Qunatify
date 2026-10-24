@@ -4,7 +4,8 @@ let rows = null, cur = null, imgUrl = null, secs = [];
 
 (async () => {
   if (!await requireAuth()) return;
-  const { data } = await sb.from('profiles').select('is_admin').single();
+  const { data: { user } } = await sb.auth.getUser();
+const { data } = await sb.from('profiles').select('is_admin').eq('id', user.id).single();
   if (!data || !data.is_admin) { alert('Admin access nahi hai'); location.href = 'dashboard.html'; return; }
   $('main').style.display = '';
   loadTests();
