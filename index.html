@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quantify | Maths Sectional Mock Tests for SSC</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
 <body>
 <div class="topbar"><span class="logo">Quantify</span>
@@ -12,7 +13,9 @@
 <div><b>⏸ Pause &amp; Resume</b>Stop mid-test and continue from where you left</div>
 <div><b>🏆 Leaderboard</b>See your rank right after submitting</div>
 <div><b>📖 Detailed solutions</b>Question-wise solutions with accuracy report</div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="supabase.js"></script>
 <script>sb.auth.getSession().then(({data})=>{if(data.session){
  document.getElementById('nav-a').textContent='Dashboard';document.getElementById('nav-a').href='dashboard.html';
