@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="result.css"><script src="theme.js"></script></head>
 <body>
 <div class="topbar"><a class="logo" href="index.html">Quantify</a>
@@ -7,6 +8,8 @@
 <button class="theme-btn" type="button">🌙</button><button class="btn-s ghost" id="out">Logout</button></div></div>
 <div class="wrap"><h2 id="hi" style="margin-bottom:16px">Dashboard</h2>
 <div id="ban"></div><div class="chipbar" id="secs"></div><div class="tgrid" id="list">Loading...</div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="supabase.js"></script><script src="payment.js"></script><script src="dashboard.js"></script>
 </body></html>
