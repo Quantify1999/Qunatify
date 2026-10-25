@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>New Password | Quantify</title><link rel="stylesheet" href="style.css">
 <script src="theme.js"></script>
 </head><body data-page="reset">
@@ -10,6 +11,8 @@
 <form id="form"><label>Naya password</label><input id="pass" type="password" required autocomplete="new-password"><label>Confirm password</label><input id="pass2" type="password" required autocomplete="new-password"><button class="btn" id="go" type="submit">Password update karo</button><div id="msg" class="msg"></div></form>
 <div class="links"><span></span><span></span></div>
 </div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="supabase.js"></script><script src="auth.js"></script>
 </body></html>
