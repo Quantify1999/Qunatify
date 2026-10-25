@@ -17,16 +17,18 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = '
   if (!await requireAuth()) return;
   const id = new URLSearchParams(location.search).get('id');
   if (!id) { location.href = 'dashboard.html'; return; }
-  const { data: t } = await sb.from('tests').select('*').eq('id', id).single();
-  if (!t) { alert('Test nahi mila'); location.href = 'dashboard.html'; return; }
-  test = t;
-  const { data: a, error } = await sb.rpc('start_attempt', { t: id });
+  const [{ data: t }, { data: a, error }, { data: q }, { data: pf }] = await Promise.all([
+    sb.from('tests').select('*, sections(name)').eq('id', id).single(),
+    sb.rpc('start_attempt', { t: id }),
+    sb.from('questions_public').select('*').eq('test_id', id).order('position'),
+    sb.from('profiles').select('name').single()
+  ]);
   if (error) {
     alert(/locked/.test(error.message) ? 'Ye test locked hai, pehle unlock karo.' : /no attempts/.test(error.message) ? 'Is test ke attempts khatam ho gaye.' : error.message);
     location.href = 'dashboard.html'; return;
   }
-  att = a;
-  const { data: q } = await sb.from('questions_public').select('*').eq('test_id', id).order('position');
+  if (!t) { alert('Test nahi mila'); location.href = 'dashboard.html'; return; }
+  test = t; att = a;
   if (!q || !q.length) { alert('Is test mein abhi questions nahi hain'); location.href = 'dashboard.html'; return; }
   qs = q; hasHi = q.some(x => x.q_text_hi);
   const sv = att.answers || {};
@@ -34,11 +36,7 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = '
   Object.keys(sv).forEach(k => { if (k[0] !== '_') ans[k] = sv[k]; });
   qt = att.q_times || {};
   rem = att.remaining_sec ?? test.duration_min * 60;
-  const [{ data: sx }, { data: pf }] = await Promise.all([
-    test.section_id ? sb.from('sections').select('name').eq('id', test.section_id).single() : Promise.resolve({ data: null }),
-    sb.from('profiles').select('name').single()
-  ]);
-  secName = (sx && sx.name) || 'Maths';
+  secName = (t.sections && t.sections.name) || 'Maths';
   ['ttl', 'ttl2', 'ttl3'].forEach(i => $(i).textContent = test.title);
   $('cand').textContent = 'Candidate: ' + ((pf && pf.name) || '');
   $('ptab').textContent = secName; $('secname').textContent = secName;
