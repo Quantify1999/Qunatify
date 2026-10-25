@@ -12,12 +12,12 @@ document.getElementById('out').onclick = async () => { await sb.auth.signOut(); 
     sb.from('attempts').select('id,test_id,attempt_no,status,score,submitted_at').order('attempt_no'),
     sb.from('profiles').select('name,is_admin').single(),
     sb.from('test_stats').select('*'),
-    sb.from('leaderboard').select('test_id,rank').eq('user_id', uid),
+    sb.rpc('my_ranks'),
     sb.from('sections').select('*').order('position')
   ]);
   const paid = (p.data || []).length > 0;
   const S = {}; (ts.data || []).forEach(x => S[x.test_id] = x);
-  const R = {}; (lb.data || []).forEach(x => R[x.test_id] = x.rank);
+  const R = {}; (lb.data || []).forEach(x => R[x.test_id] = x.rnk);
   if (me.data) {
     document.getElementById('hi').textContent = 'Hi ' + (me.data.name || '') + ' 👋';
     if (me.data.is_admin) document.getElementById('adm').style.display = '';
