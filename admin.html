@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin | Quantify</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
 <body class="admin">
 <div class="topbar"><a class="logo" href="dashboard.html">Quantify · Admin</a><div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
@@ -49,7 +50,9 @@
 <div class="row" style="justify-content:flex-end"><span id="e-msg"></span><button class="btn-s red" id="e-del" type="button">Delete</button><button class="btn-s ghost" id="e-x" type="button">Cancel</button><button class="btn-s" id="e-save" type="button">Save</button></div>
 </div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script>
 </body></html>
