@@ -1,15 +1,7 @@
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtK = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
 const num = n => Number(n).toFixed(2).replace(/\.?0+$/, '');
-document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.href = 'login.html'; };
-
-// sidebar open/close (mobile)
-const side = document.getElementById('side'), sbd = document.getElementById('sbd');
-const openSide = () => { side.classList.add('on'); sbd.classList.add('on'); };
-const closeSide = () => { side.classList.remove('on'); sbd.classList.remove('on'); };
-document.getElementById('hamb').onclick = openSide;
-document.getElementById('bsec').onclick = openSide;
-sbd.onclick = closeSide;
+document.querySelectorAll('.out').forEach(b => b.onclick = async () => { await sb.auth.signOut(); location.href = 'login.html'; });
 
 (async () => {
   const s = await requireAuth(); if (!s) return;
@@ -24,45 +16,44 @@ sbd.onclick = closeSide;
     sb.from('sections').select('*').order('position')
   ]);
   const paid = (p.data || []).length > 0;
+  const tests = t.data || [];
   const S = {}; (ts.data || []).forEach(x => S[x.test_id] = x);
   const R = {}; (lb.data || []).forEach(x => R[x.test_id] = x.rnk);
+  let uname = '';
   if (me.data) {
-    document.getElementById('hi').textContent = 'Hi ' + (me.data.name || '') + ' 👋';
-    if (me.data.is_admin) document.getElementById('adm').style.display = '';
-    const av = document.getElementById('av');
-    av.innerHTML = me.data.avatar_url ? `<img src="${esc(me.data.avatar_url)}" alt="">` : esc((me.data.name || 'Q').trim().charAt(0).toUpperCase() || 'Q');
+    uname = me.data.name || '';
+    if (me.data.is_admin) document.querySelectorAll('.adm').forEach(e => e.style.display = '');
+    document.getElementById('av').innerHTML = me.data.avatar_url ? `<img src="${esc(me.data.avatar_url)}" alt="">` : esc((uname || 'Q').trim().charAt(0).toUpperCase() || 'Q');
   }
-  if (!paid) document.getElementById('ban').innerHTML =
-    '<div class="banner"><div><b>Saare tests unlock karo sirf ₹29 mein</b><br><small>One-time payment, lifetime access</small></div><button class="btn-s" onclick="unlock()">Unlock ₹29</button></div>';
 
-  const list = document.getElementById('list');
   const secs = sx.data || [];
-  if (!t.data || !t.data.length) {
-    list.textContent = 'Abhi koi test nahi hai. Jaldi aayenge!';
-    document.getElementById('secs').innerHTML = secs.map(x => secBtn(x, x.id, 0, false)).join('');
-    return;
-  }
-
-  const hasOther = t.data.some(x => !x.section_id || !secs.find(y => y.id === x.section_id));
+  const hasOther = tests.some(x => !x.section_id || !secs.find(y => y.id === x.section_id));
   const chips = secs.map(x => ({ id: x.id, name: x.name, icon: x.icon_url })).concat(hasOther ? [{ id: 'other', name: 'Other', icon: null }] : []);
   const inSec = (test, id) => id === 'other' ? (!test.section_id || !secs.find(y => y.id === test.section_id)) : test.section_id === id;
-  let curSec = localStorage.getItem('q-sec');
-  if (!chips.find(c => c.id === curSec)) curSec = (chips.find(c => t.data.some(x => inSec(x, c.id))) || chips[0] || {}).id;
 
-  function icon(c) {
-    return c.icon ? `<img src="${esc(c.icon)}" alt="">` : `<span class="ic">${/live/i.test(c.name) ? '🔴' : (c.id === 'other' ? '📁' : '📘')}</span>`;
+  const view = document.getElementById('view'), crumb = document.getElementById('crumb'), hi = document.getElementById('hi');
+
+  function showHome() {
+    crumb.innerHTML = '';
+    hi.textContent = 'Hi ' + uname + ' 👋';
+    if (!chips.length) { view.innerHTML = '<p style="color:var(--muted)">Abhi koi section nahi hai. Jaldi aayenge!</p>'; return; }
+    view.innerHTML = `<div class="mhead"><h3>Modules</h3><small>${chips.length}</small></div>
+      <div class="mgrid">${chips.map(c => `<button class="mc" type="button" data-id="${esc(c.id)}" aria-label="${esc(c.name)}">${c.icon ? `<img src="${esc(c.icon)}" alt="${esc(c.name)}">` : `<span class="mcn">${esc(c.name)}</span>`}</button>`).join('')}</div>`;
+    view.querySelectorAll('.mc').forEach(b => b.onclick = () => go(b.dataset.id));
   }
-  function draw() {
-    document.getElementById('secs').innerHTML = chips.map(c => {
-      const n = t.data.filter(x => inSec(x, c.id)).length;
-      return `<button class="sti${c.id === curSec ? ' on' : ''}" data-id="${c.id}" type="button">${icon(c)}<span>${esc(c.name)}</span><small>${n}</small></button>`;
-    }).join('');
-    document.querySelectorAll('#secs .sti').forEach(b => b.onclick = () => { curSec = b.dataset.id; localStorage.setItem('q-sec', curSec); closeSide(); draw(); scrollTo(0, 0); });
-    const cc = chips.find(c => c.id === curSec);
-    const shown = chips.length ? t.data.filter(x => inSec(x, curSec)) : t.data;
-    document.getElementById('sech').innerHTML = cc ? `${cc.icon ? `<img src="${esc(cc.icon)}" alt="">` : `<span class="ic">${/live/i.test(cc.name) ? '🔴' : '📘'}</span>`}<div><h3>${esc(cc.name)}</h3><small>${shown.length} tests</small></div>` : '';
+
+  function showSec(c) {
+    const shown = tests.filter(x => inSec(x, c.id));
+    crumb.innerHTML = `<a id="cHome">Home</a> › <b>${esc(c.name)}</b>`;
+    document.getElementById('cHome').onclick = () => go(null);
+    hi.textContent = '';
+    view.innerHTML = `<div class="mhead"><h3>${esc(c.name)}</h3><small>${shown.length} tests</small></div><div class="tgrid" id="list"></div>`;
+    const list = document.getElementById('list');
     if (!shown.length) { list.innerHTML = '<p style="color:var(--muted)">Is section mein abhi koi test nahi hai. Jaldi aayenge!</p>'; return; }
-    list.innerHTML = shown.map(test => {
+    list.innerHTML = shown.map(testCard).join('');
+  }
+
+  function testCard(test) {
     const st = S[test.id] || { q_count: 0, participants: 0, has_hi: false };
     const total = st.q_count * test.pos_marks;
     const locked = !test.is_free && !paid;
@@ -92,15 +83,23 @@ sbd.onclick = closeSide;
       return `<div class="tc"><div class="bd2">${badge}<h4>${esc(test.title)}</h4><div class="mt">${mid}</div><div class="pb2"><i style="width:${pct}%"></i></div></div><div class="ft">${foot}</div></div>`;
     }
     return `<div class="tc"><div class="bd2">${badge}<h4>${esc(test.title)}</h4><div class="mt">${mid}</div></div><div class="ft">${foot}</div></div>`;
-  }).join('');
   }
-  draw();
+
+  function route() {
+    const id = new URLSearchParams(location.search).get('s');
+    const c = id && chips.find(x => x.id === id);
+    c ? showSec(c) : showHome();
+  }
+  function go(id) {
+    history.pushState({}, '', id ? 'dashboard.html?s=' + encodeURIComponent(id) : 'dashboard.html');
+    route(); window.scrollTo(0, 0);
+  }
+  addEventListener('popstate', route);
+  route();
 })();
 
-function secBtn(x, id, n, on) {
-  return `<button class="sti${on ? ' on' : ''}" type="button">${x.icon_url ? `<img src="${esc(x.icon_url)}" alt="">` : '<span class="ic">📘</span>'}<span>${esc(x.name)}</span><small>${n}</small></button>`;
-}
 function unlock() {
   if (window.startPayment) startPayment();
   else alert('Payment module (payment.js) abhi add hona baaki hai');
-}
+                                          }
+    
