@@ -1,13 +1,24 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="result.css"><script src="theme.js"></script></head>
+<title>Dashboard | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="result.css"><link rel="stylesheet" href="sidebar.css"><script src="theme.js"></script></head>
 <body>
-<div class="topbar"><a class="logo" href="index.html">Quantify</a>
-<div class="nav-r"><a class="btn-s ghost" id="adm" href="admin.html" style="display:none">Admin</a>
-<button class="theme-btn" type="button">🌙</button><button class="btn-s ghost" id="out">Logout</button></div></div>
-<div class="wrap"><h2 id="hi" style="margin-bottom:16px">Dashboard</h2>
-<div id="ban"></div><div class="chipbar" id="secs"></div><div class="tgrid" id="list">Loading...</div></div>
+<div class="topbar"><div class="tl"><button class="hamb" id="hamb" type="button">☰</button><a class="logo" href="index.html">Quantify</a></div>
+<div class="nav-r"><button class="theme-btn" type="button">🌙</button><a class="av" id="av" href="settings.html">Q</a></div></div>
+<div class="shell">
+<aside class="side" id="side">
+<div class="lbl">Sections</div>
+<div id="secs"></div>
+<hr>
+<a class="sti" href="settings.html"><span class="ic">⚙️</span><span>Settings</span></a>
+<a class="sti" id="adm" href="admin.html" style="display:none"><span class="ic">🛠</span><span>Admin</span></a>
+<button class="sti" id="out" type="button"><span class="ic">🚪</span><span>Logout</span></button>
+</aside>
+<div class="sbd" id="sbd"></div>
+<main class="main"><div class="wrap"><h2 id="hi" style="margin-bottom:16px">Dashboard</h2>
+<div id="ban"></div><div class="sech" id="sech"></div><div class="tgrid" id="list">Loading...</div></div></main>
+</div>
+<nav class="bnav"><a href="dashboard.html"><span>🏠</span>Home</a><button id="bsec" type="button"><span>📚</span>Sections</button><a href="settings.html"><span>⚙️</span>Settings</a></nav>
 <script src="supabase-lib.min.js"></script>
 <script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
