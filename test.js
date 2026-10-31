@@ -75,6 +75,7 @@ function render() {
   $('qtext').innerHTML = esc(v.t) + (q.image_url ? `<img src="${q.image_url}" alt="diagram">` : '');
   $('opts').innerHTML = v.o.map((o, i) => `<div class="opt${ans[q.id] === i ? ' sel' : ''}" data-i="${i}"><span class="rd"></span><span class="no">${i + 1}.</span><span>${esc(o)}</span></div>`).join('');
   document.querySelectorAll('.opt').forEach(el => el.onclick = () => { ans[q.id] = +el.dataset.i; render(); });
+  if ($('prev')) $('prev').disabled = idx === 0;
   paint(); palette();
 }
 function stat(q, i) {
@@ -99,6 +100,18 @@ function setLang(l) { lang = l; localStorage.setItem('q-lang', l); $('langsel').
 $('lang').onclick = () => setLang(lang === 'en' ? 'hi' : 'en');
 $('langsel').onchange = e => setLang(e.target.value);
 $('star').onclick = () => { const id = qs[idx].id; bm.has(id) ? bm.delete(id) : bm.add(id); render(); };
+
+// Previous button (test.html me na ho to yahin bana deta hai)
+if (!$('prev')) {
+  const b = document.createElement('button');
+  b.id = 'prev'; b.type = 'button'; b.textContent = '← Previous'; b.className = $('next').className;
+  $('next').parentNode.insertBefore(b, $('next'));
+}
+function prev() {
+  if (idx > 0) go(idx - 1); else toast('Ye pehla question hai');
+  save(false);
+}
+$('prev').onclick = prev;
 
 function next() { if (idx < qs.length - 1) go(idx + 1); else { render(); toast('Ye last question hai'); } save(false); }
 $('next').onclick = next;
@@ -146,7 +159,7 @@ function info(kind) {
     $('ibody').innerHTML = `<ol style="padding-left:18px"><li>Total duration: <b>${test.duration_min} minutes</b>.</li>
       <li>Correct answer: <b>+${mk(+test.pos_marks)}</b>, wrong answer: <b>−${mk(+test.neg_marks)}</b>, not attempted: 0.</li>
       <li>Click an option to select it. Use <b>Clear Response</b> to remove your answer.</li>
-      <li><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review</b> flags the question and moves ahead.</li>
+      <li><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review</b> flags the question and moves ahead. Use <b>Previous</b> to go back.</li>
       <li>Use the question palette to jump to any question.</li>
       <li>You can pause the test (timer stops) and resume later.</li>
       <li>Click <b>Submit Test</b> when done. The test is submitted automatically when time ends.</li></ol>`;
@@ -155,3 +168,4 @@ function info(kind) {
 }
 $('lnkSym').onclick = () => info('sym'); $('lnkIns').onclick = () => info('ins');
 $('iclose').onclick = () => $('iov').classList.remove('on');
+    
