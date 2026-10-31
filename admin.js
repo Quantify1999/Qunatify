@@ -208,12 +208,19 @@ function flash(t) {
 const safeSheet = s => String(s).replace(/[\\\/:*?"<>|\[\]]/g, '').trim().slice(0, 28) || 'Sheet';
 const safeFile = s => String(s).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'file';
 function qRows(qs) {
+  // parse.js format: Hindi usi cell me English ke neeche (nayi line se)
+  const both = (en, hi) => (hi && hi !== en) ? (en || '') + '\n' + hi : (en || '');
   return qs.map(q => ({
-    'No': q.position, 'Question': q.q_text, 'Question Hindi': q.q_text_hi || '',
-    'Option A': (q.options || [])[0] || '', 'Option B': (q.options || [])[1] || '', 'Option C': (q.options || [])[2] || '', 'Option D': (q.options || [])[3] || '',
-    'Option A Hindi': (q.options_hi || [])[0] || '', 'Option B Hindi': (q.options_hi || [])[1] || '', 'Option C Hindi': (q.options_hi || [])[2] || '', 'Option D Hindi': (q.options_hi || [])[3] || '',
-    'Answer': LET[q.correct_option] || '', 'Explanation': q.explanation || '', 'Explanation Hindi': q.explanation_hi || '',
-    'Has Diagram': q.has_diagram ? 'yes' : '', 'Image URL': q.image_url || '', 'Solution Image URL': q.explanation_image_url || ''
+    question_text: both(q.q_text, q.q_text_hi),
+    option_a: both((q.options || [])[0], (q.options_hi || [])[0]),
+    option_b: both((q.options || [])[1], (q.options_hi || [])[1]),
+    option_c: both((q.options || [])[2], (q.options_hi || [])[2]),
+    option_d: both((q.options || [])[3], (q.options_hi || [])[3]),
+    correct_answer: LET[q.correct_option] || '',
+    explanation: both(q.explanation, q.explanation_hi),
+    image_url: q.image_url || '',
+    has_diagram: q.has_diagram ? 'yes' : '',
+    solution_image_url: q.explanation_image_url || ''
   }));
 }
 async function fetchQs(ids) {
