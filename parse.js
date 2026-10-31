@@ -30,6 +30,7 @@ function normRow(r) {
     correct_option: ans, explanation: ex || null, explanation_hi: exh || null,
     has_diagram: /^(yes|true|1)$/i.test(String(k.has_diagram || '')),
     image_url: /^https?:\/\//i.test(img) ? img : null,
+    explanation_image_url: /^https?:\/\//i.test(String(k.solution_image_url || '').trim()) ? String(k.solution_image_url).trim() : null,
     topic: k.topic || null, difficulty: k.difficulty || null
   };
 }
