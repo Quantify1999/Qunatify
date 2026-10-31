@@ -1,7 +1,15 @@
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtK = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
 const num = n => Number(n).toFixed(2).replace(/\.?0+$/, '');
 document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.href = 'login.html'; };
+
+// sidebar open/close (mobile)
+const side = document.getElementById('side'), sbd = document.getElementById('sbd');
+const openSide = () => { side.classList.add('on'); sbd.classList.add('on'); };
+const closeSide = () => { side.classList.remove('on'); sbd.classList.remove('on'); };
+document.getElementById('hamb').onclick = openSide;
+document.getElementById('bsec').onclick = openSide;
+sbd.onclick = closeSide;
 
 (async () => {
   const s = await requireAuth(); if (!s) return;
@@ -10,7 +18,7 @@ document.getElementById('out').onclick = async () => { await sb.auth.signOut(); 
     sb.from('tests').select('*').eq('published', true).order('created_at'),
     sb.from('purchases').select('id').eq('status', 'paid').limit(1),
     sb.from('attempts').select('id,test_id,attempt_no,status,score,submitted_at').order('attempt_no'),
-    sb.from('profiles').select('name,is_admin').single(),
+    sb.from('profiles').select('name,is_admin,avatar_url').eq('id', uid).single(),
     sb.from('test_stats').select('*'),
     sb.rpc('my_ranks'),
     sb.from('sections').select('*').order('position')
@@ -21,26 +29,38 @@ document.getElementById('out').onclick = async () => { await sb.auth.signOut(); 
   if (me.data) {
     document.getElementById('hi').textContent = 'Hi ' + (me.data.name || '') + ' 👋';
     if (me.data.is_admin) document.getElementById('adm').style.display = '';
+    const av = document.getElementById('av');
+    av.innerHTML = me.data.avatar_url ? `<img src="${esc(me.data.avatar_url)}" alt="">` : esc((me.data.name || 'Q').trim().charAt(0).toUpperCase() || 'Q');
   }
   if (!paid) document.getElementById('ban').innerHTML =
     '<div class="banner"><div><b>Saare tests unlock karo sirf ₹29 mein</b><br><small>One-time payment, lifetime access</small></div><button class="btn-s" onclick="unlock()">Unlock ₹29</button></div>';
 
   const list = document.getElementById('list');
-  if (!t.data || !t.data.length) { list.textContent = 'Abhi koi test nahi hai. Jaldi aayenge!'; return; }
-
   const secs = sx.data || [];
+  if (!t.data || !t.data.length) {
+    list.textContent = 'Abhi koi test nahi hai. Jaldi aayenge!';
+    document.getElementById('secs').innerHTML = secs.map(x => secBtn(x, x.id, 0, false)).join('');
+    return;
+  }
+
   const hasOther = t.data.some(x => !x.section_id || !secs.find(y => y.id === x.section_id));
-  const chips = secs.map(x => ({ id: x.id, name: x.name })).concat(hasOther ? [{ id: 'other', name: 'Other' }] : []);
+  const chips = secs.map(x => ({ id: x.id, name: x.name, icon: x.icon_url })).concat(hasOther ? [{ id: 'other', name: 'Other', icon: null }] : []);
   const inSec = (test, id) => id === 'other' ? (!test.section_id || !secs.find(y => y.id === test.section_id)) : test.section_id === id;
   let curSec = localStorage.getItem('q-sec');
   if (!chips.find(c => c.id === curSec)) curSec = (chips.find(c => t.data.some(x => inSec(x, c.id))) || chips[0] || {}).id;
+
+  function icon(c) {
+    return c.icon ? `<img src="${esc(c.icon)}" alt="">` : `<span class="ic">${/live/i.test(c.name) ? '🔴' : (c.id === 'other' ? '📁' : '📘')}</span>`;
+  }
   function draw() {
     document.getElementById('secs').innerHTML = chips.map(c => {
       const n = t.data.filter(x => inSec(x, c.id)).length;
-      return `<button class="sch${c.id === curSec ? ' on' : ''}" data-id="${c.id}">${/live/i.test(c.name) ? '🔴 ' : ''}${esc(c.name)} <small>(${n})</small></button>`;
+      return `<button class="sti${c.id === curSec ? ' on' : ''}" data-id="${c.id}" type="button">${icon(c)}<span>${esc(c.name)}</span><small>${n}</small></button>`;
     }).join('');
-    document.querySelectorAll('.sch').forEach(b => b.onclick = () => { curSec = b.dataset.id; localStorage.setItem('q-sec', curSec); draw(); });
+    document.querySelectorAll('#secs .sti').forEach(b => b.onclick = () => { curSec = b.dataset.id; localStorage.setItem('q-sec', curSec); closeSide(); draw(); scrollTo(0, 0); });
+    const cc = chips.find(c => c.id === curSec);
     const shown = chips.length ? t.data.filter(x => inSec(x, curSec)) : t.data;
+    document.getElementById('sech').innerHTML = cc ? `${cc.icon ? `<img src="${esc(cc.icon)}" alt="">` : `<span class="ic">${/live/i.test(cc.name) ? '🔴' : '📘'}</span>`}<div><h3>${esc(cc.name)}</h3><small>${shown.length} tests</small></div>` : '';
     if (!shown.length) { list.innerHTML = '<p style="color:var(--muted)">Is section mein abhi koi test nahi hai. Jaldi aayenge!</p>'; return; }
     list.innerHTML = shown.map(test => {
     const st = S[test.id] || { q_count: 0, participants: 0, has_hi: false };
@@ -77,6 +97,9 @@ document.getElementById('out').onclick = async () => { await sb.auth.signOut(); 
   draw();
 })();
 
+function secBtn(x, id, n, on) {
+  return `<button class="sti${on ? ' on' : ''}" type="button">${x.icon_url ? `<img src="${esc(x.icon_url)}" alt="">` : '<span class="ic">📘</span>'}<span>${esc(x.name)}</span><small>${n}</small></button>`;
+}
 function unlock() {
   if (window.startPayment) startPayment();
   else alert('Payment module (payment.js) abhi add hona baaki hai');
