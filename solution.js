@@ -49,7 +49,8 @@ function render() {
   // % got this right (hamesha) + Correct option number (sirf Show Answer ON)
   const pct = sx && sx.pct_correct !== null && sx.pct_correct !== undefined ? `<b>${Math.round(sx.pct_correct)}%</b> got this right` : '';
   $('stat').innerHTML = `<span>${showAns ? `Correct Answers Is: <b>${q.correct_option + 1}</b>` : ''}</span><span>${pct}</span>`;
-  $('ex').innerHTML = (showAns && ex) ? `<div class="exb"><b>Solution</b><br>${esc(ex)}</div>` : '';
+  const exImg = q.explanation_image_url ? `<img src="${esc(q.explanation_image_url)}" alt="solution" style="max-width:100%;display:block;margin-top:8px;border-radius:8px">` : '';
+  $('ex').innerHTML = (showAns && (ex || exImg)) ? `<div class="exb"><b>Solution</b>${ex ? '<br>' + esc(ex) : ''}${exImg}</div>` : '';
 
   // palette + top strip: correct/wrong/skipped hamesha
   const cnt = { ok: 0, bad: 0, skip: 0 }; sols.forEach(x => cnt[status(x)]++);
