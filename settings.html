@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sidebar.css"><script src="theme.js"></script></head>
+<body>
+<div class="topbar"><div class="tl"><a class="btn-s ghost" href="dashboard.html">← Back</a><a class="logo" href="index.html">Quantify</a></div>
+<div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
+<div class="wrap" style="max-width:520px">
+<h2 style="margin-bottom:16px">Settings</h2>
+<div class="box">
+<h4 style="margin-bottom:6px">Profile</h4>
+<div class="av setav" id="pav">Q</div>
+<label>Profile photo (max 2 MB)</label>
+<input type="file" id="pfile" accept="image/*">
+<label>Naam</label>
+<input type="text" id="pname" maxlength="60">
+<button class="btn" id="psave" type="button">Save Profile</button>
+<div class="msg" id="pmsg"></div>
+</div>
+<div class="box">
+<h4 style="margin-bottom:6px">Password change</h4>
+<label>Naya password</label>
+<input type="password" id="np" autocomplete="new-password">
+<label>Naya password dobara</label>
+<input type="password" id="np2" autocomplete="new-password">
+<button class="btn" id="psave2" type="button">Change Password</button>
+<div class="msg" id="pmsg2"></div>
+</div>
+</div>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script src="supabase.js"></script><script src="settings.js"></script>
+</body></html>
