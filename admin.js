@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let rows = null, cur = null, imgUrl = null, secs = [];
+let rows = null, cur = null, imgUrl = null, secs = [], solImg = null, allTests = [];
 
 (async () => {
   if (!await requireAuth()) return;
@@ -12,7 +12,7 @@ const { data } = await sb.from('profiles').select('is_admin').eq('id', user.id).
 })();
 
 async function loadTests() {
-  const { data: tests } = await sb.from('tests').select('*').order('created_at');
+  const { data: tests } = await sb.from('tests').select('*').order('created_at'); allTests = tests || [];
   const { data: qs } = await sb.from('questions').select('test_id');
   const { data: sx } = await sb.from('sections').select('*').order('position'); secs = sx || [];
   $('t-sec').innerHTML = '<option value="">— Section chuno —</option>' + secOpts(null);
@@ -31,6 +31,8 @@ async function loadTests() {
     <button class="btn-s" onclick="saveTest('${t.id}')">Save</button>
     <button class="btn-s ghost" onclick="tog('${t.id}','published',${!t.published})">${t.published ? 'Unpublish' : 'Publish'}</button>
     <button class="btn-s ghost" onclick="tog('${t.id}','is_free',${!t.is_free})">${t.is_free ? 'FREE ✓' : 'Make free'}</button>
+    <button class="btn-s ghost" onclick="dlXlsx('${t.id}')">📊 Excel</button>
+    <button class="btn-s ghost" onclick="dlPpt('${t.id}')">📽 PPT</button>
     <button class="btn-s red" onclick="delTest('${t.id}')">Delete</button></div>`).join('') || 'Koi test nahi';
   loadQs();
 }
@@ -93,7 +95,7 @@ $('q-clear').onclick = async () => {
 async function openEdit(id) {
   const { data: q, error } = await sb.from('questions').select('*').eq('id', id).single();
   if (error) return alert(error.message);
-  cur = q; imgUrl = q.image_url;
+  cur = q; imgUrl = q.image_url; solImg = q.explanation_image_url || null; showSolPrev();
   $('e-title').textContent = 'Question ' + q.position;
   $('e-q').value = q.q_text; $('e-qh').value = q.q_text_hi || '';
   ['a', 'b', 'c', 'd'].forEach((l, i) => { $('e-' + l).value = q.options[i] || ''; $('e-' + l + 'h').value = (q.options_hi || [])[i] || ''; });
@@ -125,7 +127,7 @@ $('e-save').onclick = async () => {
     q_text: $('e-q').value.trim(), q_text_hi: $('e-qh').value.trim() || null,
     options: en, options_hi: hi.some(x => x) ? hi.map((x, i) => x || en[i]) : null,
     correct_option: +$('e-ans').value, has_diagram: $('e-diag').checked, image_url: imgUrl,
-    explanation: $('e-ex').value.trim() || null, explanation_hi: $('e-exh').value.trim() || null
+    explanation: $('e-ex').value.trim() || null, explanation_hi: $('e-exh').value.trim() || null, explanation_image_url: solImg
   };
   const { error } = await sb.from('questions').update(upd).eq('id', cur.id);
   if (error) return alert(error.message);
@@ -139,9 +141,24 @@ $('e-del').onclick = async () => {
 // ---- Sections manager ----
 function secOpts(sel) { return secs.map(s => `<option value="${s.id}"${s.id === sel ? ' selected' : ''}>${esc(s.name)}</option>`).join(''); }
 function renderSecs() {
-  $('sec-list').innerHTML = secs.map(s => `<div class="trow"><input type="text" id="sn-${s.id}" value="${esc(s.name)}" style="flex:1;min-width:160px;width:auto">
+  $('sec-list').innerHTML = secs.map(s => `<div class="trow">
+    ${s.icon_url ? `<img src="${esc(s.icon_url)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover">` : '<span style="font-size:24px">📘</span>'}
+    <input type="text" id="sn-${s.id}" value="${esc(s.name)}" style="flex:1;min-width:140px;width:auto">
     <label>Order <input type="number" id="sp-${s.id}" value="${s.position}"></label>
+    <label class="btn-s ghost" style="cursor:pointer">🖼 Icon<input type="file" accept="image/*" hidden onchange="upIcon('${s.id}', this)"></label>
+    <button class="btn-s ghost" onclick="dlSecXlsx('${s.id}')">📊 Section Excel</button>
     <button class="btn-s" onclick="saveSec('${s.id}')">Save</button><button class="btn-s red" onclick="delSec('${s.id}')">Delete</button></div>`).join('') || 'Koi section nahi';
+}
+async function upIcon(id, el) {
+  const f = el.files[0]; if (!f) return;
+  if (f.size > 1.5 * 1024 * 1024) return alert('Image 1.5 MB se choti rakho');
+  const ext = (f.name.split('.').pop() || 'png').toLowerCase();
+  const path = `sections/${id}-${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('assets').upload(path, f, { contentType: f.type });
+  if (error) return alert(error.message);
+  const url = sb.storage.from('assets').getPublicUrl(path).data.publicUrl;
+  const { error: e2 } = await sb.from('sections').update({ icon_url: url }).eq('id', id);
+  alert(e2 ? e2.message : 'Icon save ho gaya ✅'); loadTests();
 }
 $('sec-add').onclick = async () => {
   const name = $('sec-name').value.trim(); if (!name) return alert('Naam daalo');
@@ -156,4 +173,131 @@ async function delSec(id) {
   if (!confirm('Section delete hoga. Uske tests delete nahi honge, bas "no section" ho jayenge. Pakka?')) return;
   await sb.from('sections').delete().eq('id', id); loadTests();
                                                         }
-  
+
+// ================= Solution image (UI inject) =================
+(function () {
+  const anchor = $('e-exh'); if (!anchor) return;
+  const box = document.createElement('div');
+  box.innerHTML = '<h4>Solution image (optional)</h4><input type="file" id="e-simg" accept="image/*"><img id="e-sprev" class="prev" style="display:none" alt=""><button type="button" class="btn-s ghost" id="e-srm" style="display:none">Solution image hatao</button>';
+  anchor.insertAdjacentElement('afterend', box);
+  $('e-srm').onclick = () => { solImg = null; $('e-simg').value = ''; showSolPrev(); };
+  $('e-simg').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    $('e-msg').textContent = 'Solution image upload ho rahi hai...';
+    const ext = (f.name.split('.').pop() || 'png').toLowerCase();
+    const path = `sol-${cur.id}-${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from('question-images').upload(path, f, { contentType: f.type });
+    if (error) { $('e-msg').textContent = ''; return alert(error.message); }
+    solImg = sb.storage.from('question-images').getPublicUrl(path).data.publicUrl;
+    $('e-msg').textContent = 'Solution image upload ho gayi, Save dabao'; showSolPrev();
+  };
+})();
+function showSolPrev() {
+  const p = $('e-sprev'), r = $('e-srm'); if (!p) return;
+  p.style.display = solImg ? '' : 'none'; r.style.display = solImg ? '' : 'none';
+  if (solImg) p.src = solImg;
+}
+
+// ================= Excel / PPT download =================
+const LET = ['A', 'B', 'C', 'D'];
+function flash(t) {
+  let d = $('flash');
+  if (!d) { d = document.createElement('div'); d.id = 'flash'; d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:10px;z-index:99;font-size:14px'; document.body.appendChild(d); }
+  d.textContent = t; d.style.display = t ? '' : 'none';
+}
+const safeSheet = s => String(s).replace(/[\\\/:*?"<>|\[\]]/g, '').trim().slice(0, 28) || 'Sheet';
+const safeFile = s => String(s).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'file';
+function qRows(qs) {
+  return qs.map(q => ({
+    'No': q.position, 'Question': q.q_text, 'Question Hindi': q.q_text_hi || '',
+    'Option A': (q.options || [])[0] || '', 'Option B': (q.options || [])[1] || '', 'Option C': (q.options || [])[2] || '', 'Option D': (q.options || [])[3] || '',
+    'Option A Hindi': (q.options_hi || [])[0] || '', 'Option B Hindi': (q.options_hi || [])[1] || '', 'Option C Hindi': (q.options_hi || [])[2] || '', 'Option D Hindi': (q.options_hi || [])[3] || '',
+    'Answer': LET[q.correct_option] || '', 'Explanation': q.explanation || '', 'Explanation Hindi': q.explanation_hi || '',
+    'Has Diagram': q.has_diagram ? 'yes' : '', 'Image URL': q.image_url || '', 'Solution Image URL': q.explanation_image_url || ''
+  }));
+}
+async function fetchQs(ids) {
+  const { data, error } = await sb.from('questions').select('*').in('test_id', ids).order('position');
+  if (error) { alert(error.message); return null; }
+  return data || [];
+}
+async function dlXlsx(id) {
+  const t = allTests.find(x => x.id === id); if (!t) return;
+  const qs = await fetchQs([id]); if (!qs) return;
+  if (!qs.length) return alert('Is test mein questions nahi hain');
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(qRows(qs)), safeSheet(t.title));
+  XLSX.writeFile(wb, safeFile(t.title) + '.xlsx');
+}
+async function dlSecXlsx(secId) {
+  const s = secs.find(x => x.id === secId);
+  const ts = allTests.filter(t => t.section_id === secId);
+  if (!ts.length) return alert('Is section mein koi test nahi hai');
+  const qs = await fetchQs(ts.map(t => t.id)); if (!qs) return;
+  const wb = XLSX.utils.book_new(), used = new Set(); let n = 0;
+  ts.forEach(t => {
+    const mine = qs.filter(q => q.test_id === t.id); if (!mine.length) return;
+    let nm = safeSheet(t.title), k = 2;
+    while (used.has(nm.toLowerCase())) nm = safeSheet(t.title).slice(0, 24) + '_' + k++;
+    used.add(nm.toLowerCase());
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(qRows(mine)), nm); n++;
+  });
+  if (!n) return alert('Is section ke tests mein questions nahi hain');
+  XLSX.writeFile(wb, safeFile(s ? s.name : 'section') + '_all_tests.xlsx');
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (window.PptxGenJS) return res();
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+async function toData(url) {
+  try {
+    const r = await fetch(url); const b = await r.blob();
+    return await new Promise(res => { const f = new FileReader(); f.onload = () => res(String(f.result).replace(/^data:/, '')); f.readAsDataURL(b); });
+  } catch (e) { return null; }
+}
+function imgSize(d) {
+  return new Promise(res => {
+    if (typeof Image === 'undefined') return res(null);
+    const i = new Image(); i.onload = () => res({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => res(null); i.src = 'data:' + d;
+  });
+}
+async function buildPpt(P, t, qs, sub) {
+  const p = new P(); p.layout = 'LAYOUT_WIDE'; p.title = t.title;
+  let s = p.addSlide(); s.background = { color: 'FFFFFF' };
+  s.addText(String(t.title).toUpperCase(), { x: 0.5, y: 1.5, w: 12.33, h: 1.7, align: 'center', valign: 'middle', fontSize: 48, bold: true, color: 'E11D1D', fontFace: 'Arial', fit: 'shrink' });
+  if (sub) s.addText(sub, { x: 0.5, y: 3.3, w: 12.33, h: 1.2, align: 'center', valign: 'middle', fontSize: 40, bold: true, color: '16A34A', fontFace: 'Arial' });
+  for (const q of qs) {
+    s = p.addSlide(); s.background = { color: 'FFFFFF' };
+    const runs = [{ text: String(q.q_text || ''), options: { fontFace: 'Calibri', fontSize: 20, breakLine: true } }];
+    if (q.q_text_hi) runs.push({ text: String(q.q_text_hi), options: { fontFace: 'Mangal', fontSize: 20, breakLine: true } });
+    s.addText(runs, { x: 0.4, y: 0.25, w: 12.5, h: 1.5, valign: 'top', color: '000000', margin: 0, fit: 'shrink' });
+    s.addText((q.options || []).map(o => ({ text: String(o), options: { fontFace: 'Calibri', fontSize: 20, breakLine: true } })),
+      { x: 0.4, y: 1.85, w: 6.5, h: 1.8, valign: 'top', color: '000000', margin: 0 });
+    if (q.image_url) {
+      const d = await toData(q.image_url);
+      if (d) {
+        const sz = (await imgSize(d)) || { w: 4, h: 3 };
+        const maxW = 6.2, maxH = 3.5, k = Math.min(maxW / sz.w, maxH / sz.h);
+        s.addImage({ data: d, x: 0.4, y: 3.8, w: sz.w * k, h: sz.h * k });
+      }
+    }
+  }
+  return p;
+}
+async function dlPpt(id) {
+  const t = allTests.find(x => x.id === id); if (!t) return;
+  const sub = prompt('Title ke neeche hari line likho (jaise DAY- 1). Nahi chahiye to khaali chhodo:', '');
+  if (sub === null) return;
+  flash('PPT ban rahi hai...');
+  try {
+    const qs = await fetchQs([id]); if (!qs) return flash('');
+    if (!qs.length) { flash(''); return alert('Is test mein questions nahi hain'); }
+    await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
+    const p = await buildPpt(window.PptxGenJS, t, qs, sub.trim());
+    await p.writeFile({ fileName: safeFile(t.title) + '.pptx' });
+    flash('');
+  } catch (e) { flash(''); alert('PPT nahi bani: ' + (e.message || e)); }
+}
