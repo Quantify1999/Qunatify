@@ -17,11 +17,12 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = '
   if (!await requireAuth()) return;
   const id = new URLSearchParams(location.search).get('id');
   if (!id) { location.href = 'dashboard.html'; return; }
+  const { data: { user } } = await sb.auth.getUser();
   const [{ data: t }, { data: a, error }, { data: q }, { data: pf }] = await Promise.all([
     sb.from('tests').select('*, sections(name)').eq('id', id).single(),
     sb.rpc('start_attempt', { t: id }),
     sb.from('questions_public').select('*').eq('test_id', id).order('position'),
-    sb.from('profiles').select('name').single()
+    sb.from('profiles').select('name').eq('id', user.id).single()
   ]);
   if (error) {
     alert(/locked/.test(error.message) ? 'Ye test locked hai, pehle unlock karo.' : /no attempts/.test(error.message) ? 'Is test ke attempts khatam ho gaye.' : error.message);
@@ -168,4 +169,3 @@ function info(kind) {
 }
 $('lnkSym').onclick = () => info('sym'); $('lnkIns').onclick = () => info('ins');
 $('iclose').onclick = () => $('iov').classList.remove('on');
-    
