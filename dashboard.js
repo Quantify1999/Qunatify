@@ -28,7 +28,7 @@ document.querySelectorAll('.out').forEach(b => b.onclick = async () => { await s
 
   const secs = sx.data || [];
   const hasOther = tests.some(x => !x.section_id || !secs.find(y => y.id === x.section_id));
-  const chips = secs.map(x => ({ id: x.id, name: x.name, icon: x.icon_url })).concat(hasOther ? [{ id: 'other', name: 'Other', icon: null }] : []);
+  const chips = secs.map(x => ({ id: x.id, name: x.name, icon: x.icon_url, link: x.link_url || null })).concat(hasOther ? [{ id: 'other', name: 'Other', icon: null }] : []);
   const inSec = (test, id) => id === 'other' ? (!test.section_id || !secs.find(y => y.id === test.section_id)) : test.section_id === id;
 
   const view = document.getElementById('view'), crumb = document.getElementById('crumb'), hi = document.getElementById('hi');
@@ -38,8 +38,8 @@ document.querySelectorAll('.out').forEach(b => b.onclick = async () => { await s
     hi.textContent = 'Hi ' + uname + ' 👋';
     if (!chips.length) { view.innerHTML = '<p style="color:var(--muted)">Abhi koi section nahi hai. Jaldi aayenge!</p>'; return; }
     view.innerHTML = `<div class="mhead"><h3>Modules</h3><small>${chips.length}</small></div>
-      <div class="mgrid">${chips.map(c => `<button class="mc" type="button" data-id="${esc(c.id)}" aria-label="${esc(c.name)}">${c.icon ? `<img src="${esc(c.icon)}" alt="${esc(c.name)}">` : `<span class="mcn">${esc(c.name)}</span>`}</button>`).join('')}</div>`;
-    view.querySelectorAll('.mc').forEach(b => b.onclick = () => go(b.dataset.id));
+      <div class="mgrid">${chips.map(c => `<button class="mc" type="button" data-id="${esc(c.id)}" aria-label="${esc(c.name)}">${c.link ? '<span class="mlink">↗</span>' : ''}${c.icon ? `<img src="${esc(c.icon)}" alt="${esc(c.name)}">` : `<span class="mcn">${esc(c.name)}</span>`}</button>`).join('')}</div>`;
+    view.querySelectorAll('.mc').forEach(b => b.onclick = () => { const c = chips.find(x => x.id === b.dataset.id); c && c.link ? openLink(c.link) : go(b.dataset.id); });
   }
 
   function showSec(c) {
@@ -101,5 +101,20 @@ document.querySelectorAll('.out').forEach(b => b.onclick = async () => { await s
 function unlock() {
   if (window.startPayment) startPayment();
   else alert('Payment module (payment.js) abhi add hona baaki hai');
-                                          }
+}
+
+// Telegram / external link: phone par app khulega, laptop par Telegram Web
+function openLink(url) {
+  let u = String(url || '').trim();
+  if (!/^https?:\/\//i.test(u)) return;
+  const desktop = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const m = u.match(/^https?:\/\/(?:t\.me|telegram\.me)\/([^?#]+)/i);
+  if (m && desktop) {
+    const p = m[1].replace(/\/$/, '');
+    if (p[0] === '+') u = 'https://web.telegram.org/k/#?tgaddr=' + encodeURIComponent('tg://join?invite=' + p.slice(1));
+    else if (/^joinchat\//i.test(p)) u = 'https://web.telegram.org/k/#?tgaddr=' + encodeURIComponent('tg://join?invite=' + p.slice(9));
+    else u = 'https://web.telegram.org/k/#@' + p.split('/')[0];
+  }
+  window.open(u, '_blank', 'noopener');
+    }
     
