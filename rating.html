@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rating | Quantify</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sidebar.css?v=2"><script src="theme.js"></script>
+<style>
+.stars{display:flex;gap:6px;margin:10px 0 4px}
+.stars button{background:none;border:0;font-size:42px;line-height:1;cursor:pointer;color:#c9ced8;padding:0 2px;transition:transform .1s}
+.stars button.on{color:#f5b301}
+.stars button:active{transform:scale(1.15)}
+#fb{width:100%;min-height:130px;resize:vertical}
+.cnt{font-size:12px;color:var(--muted);text-align:right}
+</style></head>
+<body>
+<div class="topbar"><div class="tl"><a class="btn-s ghost" href="dashboard.html">← Back</a><a class="logo" href="dashboard.html">Quantify</a></div>
+<div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
+<div class="wrap" style="max-width:520px">
+<h2 style="margin-bottom:16px">Rating &amp; Feedback</h2>
+<div class="box">
+<h4>Aapko Quantify kaisa laga?</h4>
+<div class="stars" id="stars"></div>
+<div id="hint" style="font-size:13px;color:var(--muted)">Stars chuno</div>
+<label>Aapka feedback</label>
+<textarea id="fb" maxlength="500" placeholder="Apna anubhav likho..."></textarea>
+<div class="cnt"><span id="cn">0</span>/500</div>
+<button class="btn" id="send" type="button">Submit</button>
+<div class="msg" id="rmsg"></div>
+<p style="font-size:12px;color:var(--muted);margin-top:10px">Admin ki approval ke baad aapka feedback (naam ke saath) login page par dikh sakta hai. Dobara submit karoge to purana feedback badal jayega.</p>
+</div>
+</div>
+<script src="supabase-lib.min.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
+<script src="supabase.js"></script><script src="rating.js"></script>
+</body></html>
