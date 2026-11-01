@@ -145,6 +145,7 @@ function renderSecs() {
     ${s.icon_url ? `<img src="${esc(s.icon_url)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover">` : '<span style="font-size:24px">📘</span>'}
     <input type="text" id="sn-${s.id}" value="${esc(s.name)}" style="flex:1;min-width:140px;width:auto">
     <label>Order <input type="number" id="sp-${s.id}" value="${s.position}"></label>
+    <input type="url" id="sl-${s.id}" value="${esc(s.link_url || '')}" placeholder="Link (Telegram etc., optional)" style="flex:1 1 100%;width:auto;min-width:180px">
     <label class="btn-s ghost" style="cursor:pointer">🖼 Icon<input type="file" accept="image/*" hidden onchange="upIcon('${s.id}', this)"></label>
     <button class="btn-s ghost" onclick="dlSecXlsx('${s.id}')">📊 Section Excel</button>
     <button class="btn-s" onclick="saveSec('${s.id}')">Save</button><button class="btn-s red" onclick="delSec('${s.id}')">Delete</button></div>`).join('') || 'Koi section nahi';
@@ -166,7 +167,7 @@ $('sec-add').onclick = async () => {
   if (error) return alert(error.message); $('sec-name').value = ''; loadTests();
 };
 async function saveSec(id) {
-  const { error } = await sb.from('sections').update({ name: $('sn-' + id).value.trim(), position: +$('sp-' + id).value || 0 }).eq('id', id);
+  const { error } = await sb.from('sections').update({ name: $('sn-' + id).value.trim(), position: +$('sp-' + id).value || 0, link_url: ($('sl-' + id).value.trim() || null) }).eq('id', id);
   alert(error ? error.message : 'Saved ✅'); loadTests();
 }
 async function delSec(id) {
@@ -307,4 +308,31 @@ async function dlPpt(id) {
     await p.writeFile({ fileName: safeFile(t.title) + '.pptx' });
     flash('');
   } catch (e) { flash(''); alert('PPT nahi bani: ' + (e.message || e)); }
+}
+
+// ================= Student reviews (login page par kaunsa dikhana hai) =================
+(function () {
+  const wrap = document.querySelector('.wrap') || document.body;
+  const box = document.createElement('div'); box.className = 'box'; box.id = 'rv-box';
+  box.innerHTML = '<h4>Student Reviews</h4><p style="font-size:13px;color:var(--muted);margin:4px 0 10px">Jis review par tick lagaoge wahi login page par dikhega.</p><div id="rv-list">Loading...</div>';
+  wrap.appendChild(box); loadReviews();
+})();
+async function loadReviews() {
+  const { data, error } = await sb.from('reviews').select('*').order('updated_at', { ascending: false });
+  const el = $('rv-list'); if (!el) return;
+  if (error) { el.textContent = 'Error: ' + error.message; return; }
+  el.innerHTML = (data || []).map(r => `<div class="trow" style="align-items:flex-start;gap:10px">
+    <div style="flex:1;min-width:200px"><div style="color:#f5b301;letter-spacing:2px">${'★'.repeat(r.stars)}<span style="color:#c9ced8">${'★'.repeat(5 - r.stars)}</span></div>
+    <b>${esc(r.name)}</b><div style="font-size:14px">${esc(r.feedback || '(sirf stars)')}</div></div>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" ${r.show_on_login ? 'checked' : ''} onchange="rvShow('${r.id}', this.checked)" style="width:auto"> Login page par dikhao</label>
+    <button class="btn-s red" onclick="rvDel('${r.id}')">Delete</button></div>`).join('') || 'Abhi koi review nahi aaya';
+}
+async function rvShow(id, v) {
+  const { error } = await sb.from('reviews').update({ show_on_login: v }).eq('id', id);
+  if (error) { alert(error.message); loadReviews(); }
+}
+async function rvDel(id) {
+  if (!confirm('Ye review delete karein?')) return;
+  const { error } = await sb.from('reviews').delete().eq('id', id);
+  if (error) alert(error.message); loadReviews();
 }
