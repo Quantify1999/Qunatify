@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="UTF-8">
 <link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin | Quantify</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script>
-<!-- PDF.js library for direct browser PDF reading -->
+<!-- PDF.js library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body class="admin">
@@ -23,14 +23,22 @@
 
 <div class="box"><h3>Tests (time &amp; marking yahin se badlo)</h3><div id="t-list"></div></div>
 
-<!-- NEW: Direct PDF Upload Section -->
+<!-- Smart Dual PDF Auto-Upload Section with Section Selector -->
 <div class="box" style="border: 2px dashed var(--primary); background: rgba(225, 29, 29, 0.02);">
-  <h3>⚡ Direct PDF Upload (One-Click Make Test)</h3>
-  <div class="row"><select id="pdf-target-test"></select></div>
-  <p style="font-size:13px;color:var(--muted);margin:6px 0">Apni PDF (English ya Hindi) yahan select karo. System khud questions read karke selected test mein daal dega.</p>
+  <h3>⚡ Smart Dual PDF Upload (Section Chuno + Auto Test Name)</h3>
+  <p style="font-size:13px;color:var(--muted);margin:6px 0">Pehle section chuno, phir English aur Hindi dono PDFs select karo. Test ka naam date/shift se apne aap ban jayega.</p>
+  
   <div class="row">
-    <input type="file" id="pdf-file-input" accept=".pdf">
-    <button class="btn-s" id="pdf-upload-btn">Process &amp; Upload PDF</button>
+    <label style="flex:1">Section Chuno: <select id="pdf-target-sec" style="width:100%;margin-top:4px"></select></label>
+  </div>
+  
+  <div class="row" style="margin-top:10px">
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;flex:1">English PDF: <input type="file" id="pdf-eng-input" accept=".pdf"></label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;flex:1">Hindi PDF: <input type="file" id="pdf-hin-input" accept=".pdf"></label>
+  </div>
+  
+  <div class="row" style="margin-top:10px">
+    <button class="btn-s" id="pdf-smart-upload-btn">Auto-Process &amp; Create Test</button>
     <span id="pdf-msg"></span>
   </div>
 </div>
@@ -50,72 +58,128 @@
 <script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script>
 
 <script>
-// PDF Parser Integration Script
+// Sync sections to the PDF upload dropdown once loaded
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
-    const pdfSel = document.getElementById('pdf-target-test');
-    const mainTestSel = document.getElementById('q-test');
-    if (pdfSel && mainTestSel) {
-      pdfSel.innerHTML = mainTestSel.innerHTML;
+    const mainSecSel = document.getElementById('t-sec');
+    const pdfSecSel = document.getElementById('pdf-target-sec');
+    if (mainSecSel && pdfSecSel) {
+      pdfSecSel.innerHTML = mainSecSel.innerHTML;
     }
-  }, 1000);
+  }, 1200);
 
-  document.getElementById('pdf-upload-btn').onclick = async () => {
-    const testId = document.getElementById('pdf-target-test').value;
-    const fileInput = document.getElementById('pdf-file-input');
+  document.getElementById('pdf-smart-upload-btn').onclick = async () => {
+    const targetSecId = document.getElementById('pdf-target-sec').value;
+    const engInput = document.getElementById('pdf-eng-input');
+    const hinInput = document.getElementById('pdf-hin-input');
     const msg = document.getElementById('pdf-msg');
     
-    if (!testId) return alert('Pehle dropdown se test chuno!');
-    if (!fileInput.files.length) return alert('Pehle PDF file chuno!');
+    if (!targetSecId) return alert('Pehle section chuno!');
+    if (!engInput.files.length && !hinInput.files.length) {
+      return alert('Kam se kam ek PDF (English ya Hindi) select karo!');
+    }
     
-    const file = fileInput.files[0];
-    msg.textContent = 'PDF read ho rahi hai...';
+    msg.textContent = 'PDFs read aur parse ho rahi hain...';
     
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdf = await loadingTask.promise;
-      let fullText = "";
-      
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(" ");
-        fullText += pageText + "\n";
-      }
-      
-      msg.textContent = 'Questions extract ho rahe hain...';
-      // Simple regex parser for Q.No
-      const parts = fullText.split(/Q\.No\s*:\s*/i);
-      const parsedQuestions = [];
-      
-      for (let i = 1; i < parts.length; i++) {
-        const p = parts[i];
-        const lines = p.split('\n').map(l => l.trim()).filter(l => l);
-        if (lines.length > 0) {
-          parsedQuestions.чити = true; // placeholder check
-          parsedQuestions.push({
-            test_id: testId,
-            q_text: lines[0] || "Question " + i,
-            options: [lines[1] || "Option A", lines[2] || "Option B", lines[3] || "Option C", lines[4] || "Option D"],
-            correct_option: 0,
-            position: i
-          });
+      async function extractTextFromPDF(file) {
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(item => item.str).join(" ") + "\n";
         }
+        return text;
       }
       
-      if (!parsedQuestions.length) {
-        throw new Error('PDF se questions detect nahi ho paye. Sahi format wali PDF upload karein.');
+      let engText = engInput.files.length ? await extractTextFromPDF(engInput.files[0]) : "";
+      let hinText = hinInput.files.length ? await extractTextFromPDF(hinInput.files[0]) : "";
+      
+      // Auto-detect shift and date for test title
+      let detectedTitle = "CGL Exam Test";
+      const dateMatch = (engText || hinText).match(/Test Date\s*:\s*([^\n]+)/i);
+      const shiftMatch = (engText || hinText).match(/Test Time and Shift\s*:\s*([^\n]+)/i);
+      if (dateMatch && shiftMatch) {
+        detectedTitle = `CGL ${dateMatch[1].trim()} (${shiftMatch[1].trim()})`;
       }
       
-      msg.zIndex = '';
-      msg.textContent = `${parsedQuestions.length} questions mil gaye. Upload ho rahe hain...`;
+      msg.textContent = `Test ban raha hai: ${detectedTitle}...`;
       
-      const { error } = await sb.from('questions').insert(parsedQuestions);
-      if (error) throw error;
+      // Insert new test into Supabase with selected section
+      const { data: testData, error: testErr } = await sb.from('tests').insert({
+        title: detectedTitle,
+        section_id: targetSecId,
+        duration_min: 60,
+        pos_marks: 2,
+        neg_marks: 0.5,
+        published: false
+      }).select().single();
       
-      msg.textContent = `✅ Success! ${parsedQuestions.length} questions successfully upload ho gaye.`;
-      fileInput.value = '';
+      if (testErr) throw testErr;
+      const testId = testData.id;
+      
+      // Helper to parse questions and filter out ads / watermarks
+      function parsePDFText(txt) {
+        const map = {};
+        const parts = txt.split(/Q\.No\s*:\s*/i);
+        for (let i = 1; i < parts.length; i++) {
+          const p = parts[i];
+          const lines = p.split('\n').map(l => l.trim()).filter(l => l && !l.includes('JOIN GOAL CHASERS') && !l.includes('CANDIDATE RESPONSE') && !l.includes('SSC ONLINE'));
+          if (lines.length > 0) {
+            const qNumMatch = lines[0].match(/^(\d+)/) || [i, i];
+            const qNum = parseInt(qNumMatch[1] || i);
+            
+            const qText = lines[0].replace(/^\d+[\.\s]*/, '') || `Question ${qNum}`;
+            const opts = lines.slice(1, 5);
+            while(opts.length < 4) opts.push("Option");
+            
+            map[qNum] = { q_text: qText, options: opts };
+          }
+        }
+        return map;
+      }
+      
+      const engMap = parsePDFText(engText);
+      const hinMap = parsePDFText(hinText);
+      
+      const allQNums = [...new Set([...Object.keys(engMap), ...Object.keys(hinMap)])].map(Number).sort((a,b)=>a-b);
+      
+      if (allQNums.length === 0) {
+        throw new Error('PDF se questions detect nahi ho paye. Sahi format wali PDF check karein.');
+      }
+      
+      const payload = allQNums.map((num, idx) => {
+        const e = engMap[num] || { q_text: "", options: ["","","",""] };
+        const h = hinMap[num] || { q_text: "", options: ["","","",""] };
+        
+        const combinedQ = e.q_text + (h.q_text ? "\n" + h.q_text : "");
+        const combinedOpts = [0,1,2,3].map(i => {
+          let eo = e.options[i] || "";
+          let ho = h.options[i] || "";
+          return eo + (ho ? "\n" + ho : "");
+        });
+        
+        return {
+          test_id: testId,
+          q_text: combinedQ,
+          options: combinedOpts,
+          correct_option: 0,
+          position: idx + 1
+        };
+      });
+      
+      msg.textContent = `${payload.length} questions upload ho rahe hain...`;
+      
+      for (let i = 0; i < payload.length; i += 100) {
+        const { error: qErr } = await sb.from('questions').insert(payload.slice(i, i + 100));
+        if (qErr) throw qErr;
+      }
+      
+      msg.textContent = `✅ Success! Test "${detectedTitle}" ban gaya aur ${payload.length} questions upload ho gaye.`;
+      engInput.value = '';
+      hinInput.value = '';
       if (typeof loadTests === 'function') loadTests();
       
     } catch (err) {
@@ -126,4 +190,3 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 </body></html>
-  
