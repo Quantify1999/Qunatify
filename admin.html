@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <link rel="preconnect" href="https://hqrzjltedigoujxwkubp.supabase.co" crossorigin><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin | Quantify</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<title>Admin | Quantify</title><link rel="stylesheet" href="style.css"><script src="theme.js"></script><style>
+.atabs{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:20;padding:8px;margin:0 0 12px;background:var(--card,#fff);border:1px solid var(--line,#ddd);border-radius:12px}
+.atabs button{flex:1 0 auto;padding:11px 14px;border:1px solid var(--line,#ddd);border-radius:9px;background:transparent;color:var(--text,inherit);font:600 14px/1 inherit;cursor:pointer;white-space:nowrap}
+.atabs button.on{background:var(--brand,#2f6fed);border-color:var(--brand,#2f6fed);color:#fff}
+</style></head>
 <body class="admin">
 <div class="topbar"><a class="logo" href="dashboard.html">Quantify · Admin</a><div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
 <div class="wrap" id="main" style="display:none">
 
-<div class="box"><h3>Sections (dashboard categories)</h3>
+<div class="box" data-tab="sec"><h3>Sections (dashboard categories)</h3>
 <div class="row"><input type="text" id="sec-name" placeholder="Naya section naam (e.g. SSC CGL Maths Tier-I)"><button class="btn-s" id="sec-add">Add</button></div>
 <div id="sec-list"></div></div>
 
-<div class="box"><h3>Naya test banao</h3>
+<div class="box" data-tab="test"><h3>Naya test banao</h3>
 <div class="row"><input type="text" id="t-title" placeholder="Test title (e.g. CGL Mains Maths Test 1)"></div>
 <div class="row"><label>Section <select id="t-sec"></select></label></div>
 <div class="row"><label>Time (min) <input type="number" id="t-dur" value="60" min="1" style="width:90px"></label>
@@ -18,15 +22,15 @@
 <label>Galat (−) <input type="number" id="t-neg" value="0.5" step="0.25" min="0" style="width:80px"></label></div>
 <div class="row"><label><input type="checkbox" id="t-free"> Free test</label><label><input type="checkbox" id="t-pub"> Publish</label><button class="btn-s" id="t-add">Create</button></div></div>
 
-<div class="box"><h3>Tests (time &amp; marking yahin se badlo)</h3><div id="t-list"></div>
+<div class="box" data-tab="test"><h3>Tests (time &amp; marking yahin se badlo)</h3><div id="t-list"></div>
 <p style="font-size:12px;color:var(--muted);margin-top:8px">Marking badalne ka asar sirf aage submit hone wale attempts pe padega.</p></div>
 
-<div class="box"><h3>Excel upload (Hindi + English)</h3>
+<div class="box" data-tab="imp"><h3>Excel upload (Hindi + English)</h3>
 <div class="row"><select id="q-test"></select></div>
 <p style="font-size:13px;color:var(--muted);margin:6px 0">Columns: <b>question_text, option_a-d, correct_answer, explanation, has_diagram, image_url, topic, difficulty</b>. English pehle, Hindi neeche (<b>प्रश्न:</b> se) wala format auto split hoga. Excel ke positive/negative marking columns ignore hote hain, test ki settings use hoti hain.</p>
 <div class="row"><input type="file" id="q-file" accept=".xlsx,.xls,.csv"><button class="btn-s" id="q-up">Upload</button><span id="q-msg"></span></div></div>
 
-<div class="box"><h3>Questions edit / image</h3>
+<div class="box" data-tab="q"><h3>Questions edit / image</h3>
 <div class="row"><select id="m-test"></select><button class="btn-s red" id="q-clear">Saare questions delete</button></div>
 <div id="q-list">Test chuno</div></div>
 </div>
@@ -54,6 +58,29 @@
 <script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script><script src="pdfimport.js"></script>
-<script src="pdfkey_a.js?v=1"></script><script src="pdfkey_b.js?v=1"></script>
+<script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script><script src="pdfimport.js?v=3"></script>
+<script>
+(function () {
+  var wrap = document.getElementById('main');
+  var TABS = [['sec', '📁 Sections'], ['test', '📝 Tests'], ['imp', '📥 Import'], ['q', '✏️ Questions']];
+  var cur = localStorage.getItem('adm-tab'); if (!TABS.some(function (t) { return t[0] === cur; })) cur = 'sec';
+  var bar = document.createElement('div'); bar.className = 'atabs'; bar.id = 'atabs';
+  bar.innerHTML = TABS.map(function (t) { return '<button type="button" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+  wrap.insertBefore(bar, wrap.firstChild);
+  function tabOf(el) { return el.dataset.tab || (el.id === 'pi-box' || el.id === 'pk-box' ? 'imp' : null); }
+  function apply() {
+    Array.prototype.forEach.call(wrap.children, function (b) {
+      if (b === bar || !b.classList.contains('box')) return;
+      var t = tabOf(b); b.style.display = (!t || t === cur) ? '' : 'none';
+    });
+    Array.prototype.forEach.call(bar.children, function (x) { x.classList.toggle('on', x.dataset.t === cur); });
+  }
+  bar.onclick = function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    cur = t.dataset.t; localStorage.setItem('adm-tab', cur); apply(); window.scrollTo(0, 0);
+  };
+  new MutationObserver(apply).observe(wrap, { childList: true });
+  apply();
+})();
+</script>
 </body></html>
