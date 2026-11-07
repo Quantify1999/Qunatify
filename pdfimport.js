@@ -734,6 +734,7 @@ function buildQuestion(d, W, rect, erase, Wt) {
 
   // ---------------- UI ----------------
   function build() {
+    if (document.getElementById('pk-box')) return;   // duplicate box mat banao
     const anchor = $('t-add') && $('t-add').closest('.box');
     if (!anchor) return;
     const box = document.createElement('div'); box.className = 'box'; box.id = 'pk-box';
