@@ -391,4 +391,90 @@ function buildQuestion(d, W, rect, erase, Wt) {
     const anchor = $('t-add') && $('t-add').closest('.box');
     if (!anchor) return;
     const box = document.createElement('div'); box.className = 'box'; box.id = 'pk-box';
-    box.innerHTML = `<h3>Answer-key PDF se tests (English + Hindi, bade font)<
+    box.innerHTML = `<h3>Answer-key PDF se tests (English + Hindi, bade font)</h3>
+<p style="font-size:13px;color:var(--muted);margin:4px 0 8px">Bilingual answer-key PDF daalo (jisme "Correct Ans" likha ho). Pehle "PDF scan karo", phir shift chuno. Sahi/Galat marks upar "Naya test banao" wale boxes se aate hain.</p>
+<div class="row"><label>PDF <input type="file" id="pk-file" accept="application/pdf"></label><button class="btn-s" id="pk-scan">1) PDF scan karo</button></div>
+<pre id="pk-list" style="white-space:pre-wrap;font-size:12px;margin:6px 0"></pre>
+<div class="row"><label>Shift numbers (jaise 1-3,5) <input id="pk-range" placeholder="1"></label><label>Exam naam <input id="pk-exam" value="SSC CGL Tier-1 2026"></label></div>
+<div class="row"><label>Full test (100 Qs) kis section me <select id="pk-full"></select></label><label>Time (min) <input id="pk-dfull" type="number" value="60" style="width:70px"></label></div>
+<div class="row"><label>Section-wise tests kis section me <select id="pk-sec"></select></label><label>Time har section test (min) <input id="pk-dsec" type="number" value="15" style="width:70px"></label></div>
+<div class="row"><label>Image width (chhota = bada font) <input id="pk-w" type="number" value="1100" style="width:80px"></label><label><input type="checkbox" id="pk-pub"> Seedha publish karo</label><button class="btn-s" id="pk-go">2) Tests banao</button></div>
+<pre id="pk-log" style="white-space:pre-wrap;font-size:12px;margin-top:8px"></pre>`;
+    anchor.insertAdjacentElement('afterend', box);
+    const log = m => { $('pk-log').textContent = m; }, addLog = m => { $('pk-log').textContent += '\n' + m; };
+    let scanned = null;
+
+    setInterval(() => {
+      if (typeof secs === 'undefined') return;
+      ['pk-full', 'pk-sec'].forEach(id => {
+        const s = $(id); if (!s) return;
+        if (s.options.length !== secs.length + 1) {
+          const keep = s.value;
+          s.innerHTML = '<option value="">— nahi banana —</option>' + secs.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+          s.value = keep;
+        }
+      });
+    }, 800);
+
+    $('pk-scan').onclick = async () => {
+      const f = $('pk-file').files[0]; if (!f) return alert('Pehle PDF chuno');
+      const btn = $('pk-scan'); btn.disabled = true;
+      try {
+        log('Scan shuru...');
+        scanned = await scanPdf(f, log);
+        const L = scanned.shifts;
+        if (!L.length) { $('pk-list').textContent = ''; return log('Koi shift nahi mila (PDF me "Correct Ans" + "30 Sep 2026 Shift 2" jaisa header chahiye).'); }
+        $('pk-list').textContent = L.map((s, i) => `${i + 1}. ${s.date} · Shift ${s.shift} (pages ${s.pages[0]}–${s.pages[s.pages.length - 1]})`).join('\n');
+        if (!$('pk-range').value) $('pk-range').value = '1';
+        log(`${L.length} shifts mile. Ab shift numbers likho aur "Tests banao" dabao.`);
+      } catch (e) { log('Error: ' + (e.message || e)); } finally { btn.disabled = false; }
+    };
+
+    $('pk-go').onclick = async () => {
+      if (!scanned) return alert('Pehle "PDF scan karo" dabao');
+      const full = $('pk-full').value, secSel = $('pk-sec').value;
+      if (!full && !secSel) return alert('Kam se kam ek chuno: Full test ya Section-wise ka section');
+      const pick = parseRange($('pk-range').value, scanned.shifts.length);
+      if (!pick.length) return alert('Shift numbers sahi likho (jaise 1-3,5)');
+      const Wt = Math.max(600, Math.min(2200, +$('pk-w').value || 1100));
+      const exam = $('pk-exam').value.trim() || 'SSC CGL';
+      const base = { pos: +$('t-pos').value, neg: Math.abs(+$('t-neg').value || 0), pub: $('pk-pub').checked };
+      if (!confirm(`${pick.length} shift(s): ${pick.join(', ')}\n${full ? '• Full test banega\n' : ''}${secSel ? '• Section-wise tests banenge\n' : ''}\nSahi hai?`)) return;
+      const btn = $('pk-go'); btn.disabled = true;
+      try {
+        const hiCol = await hasHiCol(); base.hiCol = hiCol;
+        if (!hiCol) log('⚠ questions table me image_url_hi column nahi hai — Hindi images save nahi hongi.\nSQL: alter table questions add column image_url_hi text;\n');
+        const exist = new Set((allTests || []).map(t => t.title));
+        let made = 0, report = '';
+        for (const no of pick) {
+          const sh = scanned.shifts[no - 1], head = `${exam} · ${sh.date} · Shift ${sh.shift}`;
+          const want = [];
+          if (full) want.push({ title: head, section: full, dur: +$('pk-dfull').value || 60, kind: 'full' });
+          // sections order = PDF order
+          const qs = await processShift(scanned.doc, sh, Wt, m => { $('pk-log').textContent = report + `[${head}] ` + m; });
+          const order = []; qs.forEach(q => { if (q.sec && !order.includes(q.sec)) order.push(q.sec); });
+          if (secSel) order.forEach(sn => want.push({ title: `${head} · ${secShort(sn)}`, section: secSel, dur: +$('pk-dsec').value || 15, kind: 'sec', sec: sn }));
+          const todo = want.filter(w => !exist.has(w.title));
+          const bad = qs.filter(q => q.flags.length);
+          report += `\n${head}: ${qs.length} questions` + (bad.length ? ` (⚠ ${bad.length} check: ` + bad.slice(0, 8).map(q => 'Q' + q.n + ' ' + q.flags[0]).join('; ') + ')' : '');
+          if (!todo.length) { report += ' — sab tests pehle se hain'; continue; }
+          await uploadQs(qs, `pdfkey/${Date.now()}-${no}`, m => { $('pk-log').textContent = report + `\n[${head}] ` + m; });
+          for (const w of todo) {
+            const list = w.kind === 'full' ? qs : qs.filter(q => q.sec === w.sec);
+            try { await insertTest(w.title, w.section, list, { ...base, dur: w.dur }); made++; report += `\n  ✅ ${w.title} (${list.length} Qs)`; }
+            catch (e) { report += `\n  ❌ ${w.title}: ${e.message || e}`; }
+          }
+          log(report);
+        }
+        log(report + `\n\n${made} tests ban gaye. ⚠ wale questions Questions edit se check kar lena.`);
+        loadTests();
+      } catch (e) { addLog('Error: ' + (e.message || e)); }
+      finally { btn.disabled = false; }
+    };
+  }
+
+  window.PdfKey = { scanPdf, processShift };
+  if (typeof document !== 'undefined' && document.getElementById('t-add')) build();
+  else addEventListener('DOMContentLoaded', () => document.getElementById('t-add') && build());
+})();
+
