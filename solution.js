@@ -4,6 +4,23 @@ let test, sols = [], atts = [], cur = null, idx = 0, stats = {}, lang = localSto
 const mk = n => Number.isInteger(n * 10) ? Number(n).toFixed(1) : Number(n).toFixed(2);
 const tfmt = s => { s = Math.max(0, Math.round(s)); return s < 60 ? s + 'sec' : mmss(s); };
 
+// ---- naye (image wale) tests: question image + 4 option images ----
+const PKU = /^(.*\/)(\d+)([sf])-en\.webp(\?.*)?$/;
+function pkImgs(q, l) {
+  const m = (q.image_url || '').match(PKU); if (!m) return null;
+  const t = (l === 'hi' && q.q_text_hi) ? 'hi' : 'en', b = m[1] + m[2];
+  return { stem: `${b}${m[3]}-${t}.webp`, full: m[3] === 'f', opts: ['a', 'b', 'c', 'd'].map(c => `${b}${c}-${t}.webp`) };
+}
+const pre = new Set();
+function preload(u) { if (!pre.has(u)) { pre.add(u); const im = new Image(); im.src = u; } }
+function scaleOpts() {
+  const st = document.querySelector('.qimg'); if (!st || !st.naturalWidth) return;
+  const k = st.clientWidth / st.naturalWidth;
+  document.querySelectorAll('.oimg').forEach(o => { if (o.naturalWidth) { o.style.width = (o.naturalWidth * k) + 'px'; o.style.visibility = 'visible'; } });
+}
+addEventListener('resize', scaleOpts);
+(function () { const s = document.createElement('style'); s.textContent = '.qimg{display:block;width:100%;height:auto;margin:0;border:0;border-radius:0}.oimg{display:block;height:auto;max-width:100%;visibility:hidden}.opt.pk{align-items:center}'; document.head.appendChild(s); })();
+
 (async () => {
   if (!await requireAuth()) return;
   if (!T) { location.href = 'dashboard.html'; return; }
@@ -37,14 +54,24 @@ function render() {
   $('mks').innerHTML = `<span class="p">+${mk(+test.pos_marks)}</span><span class="n">−${mk(+test.neg_marks)}</span>`;
   $('chip').innerHTML = st === 'ok' ? '<span class="chip2 ok">Correct</span>' : st === 'bad' ? '<span class="chip2 bad">Wrong</span>' : '<span class="chip2 skip">Skipped</span>';
 
-  $('qtext').innerHTML = esc(txt) + (q.image_url ? `<img src="${q.image_url}" alt="diagram">` : '');
+  const pk = pkImgs(q, lang);
+  const cls = i => !showAns ? '' : (i === q.correct_option ? ' ok' : (i === mine ? ' bad' : ''));
+  const tagOf = i => !showAns ? '' : (i === q.correct_option ? '<em>✔ Correct</em>' : (i === mine ? '<em>✘ Your answer</em>' : ''));
+  if (pk) {
+    $('qtext').innerHTML = `<img class="qimg" src="${pk.stem}" alt="question">`;
+    $('qtext').querySelector('.qimg').onload = scaleOpts;
+  } else {
+    $('qtext').innerHTML = esc(txt) + (q.image_url ? `<img src="${q.image_url}" alt="diagram">` : '');
+  }
 
   // options: Show Answer OFF => bilkul neutral (na apna answer, na sahi answer)
-  $('opts').innerHTML = opts.map((o, i) => {
-    const c = !showAns ? '' : (i === q.correct_option ? ' ok' : (i === mine ? ' bad' : ''));
-    const tag = !showAns ? '' : (i === q.correct_option ? '<em>✔ Correct</em>' : (i === mine ? '<em>✘ Your answer</em>' : ''));
-    return `<div class="opt${c}"><span class="no">${i + 1}.</span><span>${esc(o)}</span>${tag}</div>`;
-  }).join('');
+  if (pk && !pk.full) {
+    $('opts').innerHTML = opts.map((o, i) => `<div class="opt pk${cls(i)}"><span class="no">${i + 1}.</span><img class="oimg" src="${pk.opts[i]}" alt="${esc(o)}">${tagOf(i)}</div>`).join('');
+    document.querySelectorAll('.oimg').forEach(o => { o.onload = scaleOpts; });
+    for (let j = 1; j <= 2; j++) { const nq = sols[idx + j]; const p = nq && pkImgs(nq, lang); if (p) { preload(p.stem); if (!p.full) p.opts.forEach(preload); } }
+  } else {
+    $('opts').innerHTML = opts.map((o, i) => `<div class="opt${cls(i)}"><span class="no">${i + 1}.</span><span>${esc(o)}</span>${tagOf(i)}</div>`).join('');
+  }
 
   // % got this right (hamesha) + Correct option number (sirf Show Answer ON)
   const pct = sx && sx.pct_correct !== null && sx.pct_correct !== undefined ? `<b>${Math.round(sx.pct_correct)}%</b> got this right` : '';
@@ -82,3 +109,4 @@ $('showans').onchange = e => { showAns = e.target.checked; localStorage.setItem(
 const openPal = () => { $('pal').classList.add('on'); $('bd').classList.add('on'); };
 const closePal = () => { $('pal').classList.remove('on'); $('bd').classList.remove('on'); };
 $('menu').onclick = openPal; $('pclose').onclick = closePal; $('bd').onclick = closePal;
+                                                                      
