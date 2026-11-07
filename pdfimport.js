@@ -326,7 +326,7 @@
   else addEventListener('DOMContentLoaded', () => document.getElementById('t-add') && build());
 })();
 
-/* ===== Answer-key PDF importer (pdfkey v2) ===== */
+/* ===== Answer-key PDF importer (pdfkey v3) ===== */
 function pkBanner(t,ok){try{var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;font:14px sans-serif;text-align:center;color:#fff;background:'+(ok?'#16a34a':'#dc2626');(document.body||document.documentElement).appendChild(d);setTimeout(function(){d.remove()},6000);}catch(e){}}
 (function () {
 const S = 4;                                   // render scale (px per pt)
@@ -559,6 +559,8 @@ function buildQuestion(d, W, rect, erase, Wt) {
       return { s: i.str.trim(), x: pt[0], y: pt[1], top: pt[1] - h, h, w: i.width * S };
     });
   }
+  const SECRE = /(Reasoning|Awareness|Quantitative|English Comprehension|General Intelligence)/i;
+  const clean = t => String(t).replace(/[\u0000-\u001f\ufffd]/g, '').trim();
   const byXY = (a, b) => a.y - b.y || a.x - b.x;
   function headerOf(items) {
     const t = items.filter(i => i.y < 75 * S).sort(byXY).map(i => i.s).join(' ');
@@ -620,9 +622,9 @@ function buildQuestion(d, W, rect, erase, Wt) {
       // section lines  ("General Awareness   Q 26-50")
       const secs = [];
       items.forEach(it => {
-        if (it.x > 100 * S && (/^Q\s*\d/.test(it.s) || it.s === 'Q')) {
+        if (it.x > 100 * S && /^Q\s*\d+\s*\S{0,2}\s*\d*$/.test(it.s)) {
           const name = items.filter(o => o !== it && Math.abs(o.y - it.y) < 5 * S && o.x < it.x).sort(byXY).map(o => o.s).join(' ').trim();
-          if (name) secs.push({ y: it.y, top: Math.round(it.top - 8 * S), name });
+          if (name && name.length < 60 && SECRE.test(name) && !/[\u0900-\u097F]/.test(name)) secs.push({ y: it.y, top: Math.round(it.top - 8 * S), name });
         }
       });
       secs.sort((a, b) => a.y - b.y);
@@ -658,7 +660,9 @@ function buildQuestion(d, W, rect, erase, Wt) {
       }
       cv.width = 0; page.cleanup();
     }
-    return Object.values(qs).sort((a, b) => a.n - b.n);
+    const arr = Object.values(qs).sort((a, b) => a.n - b.n);
+    arr.missing = []; if (arr.length) for (let i = 1; i <= arr[arr.length - 1].n; i++) if (!qs[i]) arr.missing.push(i);
+    return arr;
   }
 
   // ---- upload + tests ----
@@ -698,7 +702,7 @@ function buildQuestion(d, W, rect, erase, Wt) {
     await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
   }
   async function insertTest(title, section, list, opt) {
-    const body = { title, section_id: section, duration_min: opt.dur, pos_marks: opt.pos, neg_marks: opt.neg, is_free: false, published: opt.pub };
+    const body = { title: clean(title), section_id: section, duration_min: opt.dur, pos_marks: opt.pos, neg_marks: opt.neg, is_free: false, published: opt.pub };
     if (opt.cfg) body.sec_cfg = opt.cfg;
     let r = await sb.from('tests').insert(body).select('id').single();
     if (r.error && opt.cfg && /sec_cfg/.test(r.error.message || '')) {
@@ -797,7 +801,7 @@ function buildQuestion(d, W, rect, erase, Wt) {
           if (secSel) order.forEach(sn => want.push({ title: `${head} · ${secShort(sn)}`, section: secSel, dur: +$('pk-dsec').value || 15, kind: 'sec', sec: sn }));
           const todo = want.filter(w => !exist.has(w.title));
           const bad = qs.filter(q => q.flags.length);
-          report += `\n${head}: ${qs.length} questions` + (bad.length ? ` (⚠ ${bad.length} check: ` + bad.slice(0, 8).map(q => 'Q' + q.n + ' ' + q.flags[0]).join('; ') + ')' : '');
+          report += `\n${head}: ${qs.length} questions` + (qs.missing && qs.missing.length ? ` ⚠ MISSING Q: ${qs.missing.join(',')}` : '') + (bad.length ? ` (⚠ ${bad.length} check: ` + bad.slice(0, 8).map(q => 'Q' + q.n + ' ' + q.flags[0]).join('; ') + ')' : '');
           if (!todo.length) { report += ' — sab tests pehle se hain'; continue; }
           try { await uploadQs(qs, `pk2/${Date.now()}-${no}`, m => { $('pk-log').textContent = report + `\n[${head}] ` + m; }); }
           catch (e) { report += `\n  ❌ ${head}: ${errTxt(e)}`; log(report); continue; }
@@ -822,7 +826,7 @@ function buildQuestion(d, W, rect, erase, Wt) {
   }
 
   window.PdfKey = { scanPdf, processShift };
-  const go = () => { if (document.getElementById('t-add')) { build(); pkBanner(document.getElementById('pk-box') ? 'Answer-key PDF importer ready ✓' : 'pdfkey: box nahi bana', !!document.getElementById('pk-box')); } };
+  const go = () => { if (document.getElementById('t-add')) { build(); pkBanner(document.getElementById('pk-box') ? 'Answer-key PDF importer ready ✓ (v3)' : 'pdfkey: box nahi bana', !!document.getElementById('pk-box')); } };
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', go); else go();
 
 })();
