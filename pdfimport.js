@@ -326,9 +326,8 @@
   else addEventListener('DOMContentLoaded', () => document.getElementById('t-add') && build());
 })();
 
-/* ===== Naya: answer-key PDF importer (pdfkey) ===== */
-// pdfkey1.js — image engine (pdfkey2.js se PEHLE load karna)
-function pkBanner(t,ok){try{var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;font:14px sans-serif;text-align:center;color:#fff;background:'+(ok?'#16a34a':'#dc2626');(document.body||document.documentElement).appendChild(d);setTimeout(function(){d.remove()},8000);}catch(e){}}
+/* ===== Answer-key PDF importer (pdfkey v2) ===== */
+function pkBanner(t,ok){try{var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;font:14px sans-serif;text-align:center;color:#fff;background:'+(ok?'#16a34a':'#dc2626');(document.body||document.documentElement).appendChild(d);setTimeout(function(){d.remove()},6000);}catch(e){}}
 (function () {
 const S = 4;                                   // render scale (px per pt)
 const GAPW = 11;                               // word gap in output (px)
@@ -350,7 +349,7 @@ function classify(d, W, x0, y0, x1, y1, erase) {
   }
   (erase || []).forEach(e => {
     const ax = Math.max(0, e.x0 - x0), bx = Math.min(rw, e.x1 - x0), ay = Math.max(0, e.y0 - y0), by = Math.min(rh, e.y1 - y0);
-    for (let y = ay; y < by; y++) for (let x = ax; x < bx; x++) cls[y * rw + x] = 0;
+    for (let y = ay; y < by; y++) for (let x = ax; x < bx; x++) { const o = y * rw + x; if (!e.col || cls[o] === 3 || cls[o] === 4) cls[o] = 0; }
   });
   return { rw, rh, cls, x0, y0 };
 }
@@ -385,14 +384,14 @@ function findFigure(d, W, blk, ya, yb) {
 }
 
 // language-wise kept pixels -> {rgba, ink, rw, rh}
-function buildKeep(d, W, blk, lang, fig, masks) {
+function buildKeep(d, W, blk, lang, fig, masks, dropCol) {
   const { rw, rh, cls, x0, y0 } = blk; const out = new Uint8ClampedArray(rw * rh * 4).fill(255), ink = new Uint8Array(rw * rh);
   const mine = lang === 'en' ? 1 : 2, other = lang === 'en' ? 2 : 1;
   const nearMine = lang === 'en' ? masks.E : masks.H, nearOther = lang === 'en' ? masks.H : masks.E;
   for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
     const o = y * rw + x, c = cls[o]; let keep = false;
-    if (c === mine || c === 3) keep = true;
-    else if (c === 4) keep = masks.C[o] || (nearMine[o] && !nearOther[o]);
+    if (c === mine || (c === 3 && !dropCol)) keep = true;
+    else if (c === 4) keep = (!dropCol && masks.C[o]) || (nearMine[o] && !nearOther[o]);
     if (!keep && c && fig && x >= fig.x0 && x < fig.x1 && y >= fig.y0 && y < fig.y1) keep = true;
     void other;
     if (keep) { const i = ((y0 + y) * W + x0 + x) * 4; out[o * 4] = d[i]; out[o * 4 + 1] = d[i + 1]; out[o * 4 + 2] = d[i + 2]; ink[o] = 1; }
@@ -448,18 +447,20 @@ function flow(lines, Wt) {
 }
 
 // plan = [{kind:'lines', src, out:[flowLines]} | {kind:'fig', src, r}]
-function compose(plan, Wt) {
-  let width = Wt, h = PAD;
+function compose(plan, Wt, fit) {
+  const P = fit ? 8 : PAD;
+  let width = fit ? 0 : Wt, h = P;
   const blocks = [];
   plan.forEach(p => {
     if (p.kind === 'fig') { width = Math.max(width, p.r.x1 - p.r.x0); blocks.push(p); h += p.r.y1 - p.r.y0 + 14; return; }
     p.out.forEach(L => {
-      let asc = 0, desc = 0; L.toks.forEach(t => { asc = Math.max(asc, t.base - t.top); desc = Math.max(desc, t.bot - t.base); width = Math.max(width, L.w); });
+      let asc = 0, desc = 0; L.toks.forEach(t => { asc = Math.max(asc, t.base - t.top); desc = Math.max(desc, t.bot - t.base); });
+      width = Math.max(width, L.w);
       L.asc = asc; L.desc = desc; h += asc + desc + 1 + 10;
     });
     h += p.gapAfter == null ? 18 : p.gapAfter; blocks.push(p);
   });
-  const W = Math.round(width + PAD * 2), H = Math.round(h + PAD);
+  const W = Math.round(width + P * 2), H = Math.round(h + P);
   const out = new Uint8ClampedArray(W * H * 4).fill(255);
   const cp = (src, sx, sy, sw, sh, dx, dy) => {
     for (let y = 0; y < sh; y++) { const so = ((sy + y) * src.rw + sx) * 4, dO = ((dy + y) * W + dx) * 4;
@@ -468,11 +469,11 @@ function compose(plan, Wt) {
         if (dx + x < 0 || dx + x >= W) continue;
         if (src.ink[(sy + y) * src.rw + sx + x]) { out[b2] = src.rgba[a]; out[b2 + 1] = src.rgba[a + 1]; out[b2 + 2] = src.rgba[a + 2]; } } }
   };
-  let y = PAD;
+  let y = P;
   blocks.forEach(p => {
-    if (p.kind === 'fig') { const r = p.r; cp(p.src, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, PAD, y); y += r.y1 - r.y0 + 14; return; }
+    if (p.kind === 'fig') { const r = p.r; cp(p.src, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, P, y); y += r.y1 - r.y0 + 14; return; }
     p.out.forEach(L => {
-      L.toks.forEach(t => cp(p.src, t.x0, t.top, t.x1 - t.x0, t.bot - t.top + 1, PAD + Math.round(t.dx), y + L.asc - (t.base - t.top)));
+      L.toks.forEach(t => cp(p.src, t.x0, t.top, t.x1 - t.x0, t.bot - t.top + 1, P + Math.round(t.dx), y + L.asc - (t.base - t.top)));
       y += L.asc + L.desc + 1 + 10;
     });
     y += p.gapAfter == null ? 18 : p.gapAfter;
@@ -480,13 +481,12 @@ function compose(plan, Wt) {
   return { rgba: out, w: W, h: H };
 }
 
-// ---- one question block -> {en, hi, flags} ----
+// ---- one question block -> {en:{stem,opts[4],full}, hi:{..}|null, flags} ----
 function buildQuestion(d, W, rect, erase, Wt) {
   const flags = [];
   const blk = classify(d, W, rect.x0, rect.y0, rect.x1, rect.y1, erase);
   const { rw, rh, cls } = blk;
   const optLimit = Math.min(rw, 500 * S - rect.x0);
-  // option labels = colored pixels
   const rowCol = new Uint8Array(rh);
   for (let y = 0; y < rh; y++) for (let x = 0; x < optLimit; x++) if (cls[y * rw + x] === 3) { rowCol[y] = 1; break; }
   const lb = []; let cur = null, blank = 0;
@@ -499,25 +499,19 @@ function buildQuestion(d, W, rect, erase, Wt) {
       if (has) { if (s < 0) s = x; last = x; gap = 0; } else if (s >= 0) { gap++; if (gap > 20 || x === optLimit) { labels.push({ band: bi, x0: s, x1: last + 1, top: b.top, bot: b.bot }); s = -1; gap = 0; } }
     }
   });
+  const full = labels.length !== 4;
+  if (full) flags.push('option labels ' + labels.length + ' mile (4 chahiye) - poora question ek image me');
   const masks = makeMasks(blk);
-  const figProbe = { top: 0 };
-  void figProbe;
-  const stemEnd = labels.length ? Math.max(0, labels[0].top - 3 * S) : rh;
+  const stemEnd = full ? rh : Math.max(0, labels[0].top - 3 * S);
   const fig = findFigure(d, W, blk, 0, stemEnd);
-  const keepEn = buildKeep(d, W, blk, 'en', fig, masks), keepHi = buildKeep(d, W, blk, 'hi', fig, masks);
-
-  // option rects
+  const keepEn = buildKeep(d, W, blk, 'en', fig, masks, false), keepHi = buildKeep(d, W, blk, 'hi', fig, masks, false);
+  const keepEnO = buildKeep(d, W, blk, 'en', null, masks, true), keepHiO = buildKeep(d, W, blk, 'hi', null, masks, true);
   let opts = [];
-  if (labels.length === 4) {
-    opts = labels.map((L, i) => {
-      const nextInRow = labels.find((M, j) => j > i && M.band === L.band);
-      const nextBand = lb[L.band + 1];
-      return { x0: Math.max(0, L.x0 - 6), x1: nextInRow ? nextInRow.x0 - 6 : optLimit, y0: Math.max(0, L.top - 3 * S), y1: nextBand ? nextBand.top - 3 * S : rh };
-    });
-  } else {
-    flags.push('option labels ' + labels.length + ' mile (4 chahiye)');
-    if (labels.length) opts = [{ x0: 0, x1: optLimit, y0: stemEnd, y1: rh }];
-  }
+  if (!full) opts = labels.map((L, i) => {
+    const nextInRow = labels.find((M, j) => j > i && M.band === L.band);
+    const nextBand = lb[L.band + 1];
+    return { x0: Math.max(0, L.x0 - 6), x1: nextInRow ? nextInRow.x0 - 6 : optLimit, y0: Math.max(0, L.top - 3 * S), y1: nextBand ? nextBand.top - 3 * S : rh };
+  });
   const contX = 540 * S - rect.x0;
   const stemRect = { x0: 0, x1: rw, y0: 0, y1: stemEnd };
 
@@ -530,32 +524,24 @@ function buildQuestion(d, W, rect, erase, Wt) {
       plan.push({ kind: 'fig', src: keepEn, r: fig });
       n += addLines(keep, { x0: 0, x1: rw, y0: fig.y1, y1: stemEnd });
     } else n += addLines(keep, stemRect);
-    opts.forEach(r => {
-      let src = keep;
-      if (lang === 'hi') { let h = 0; for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) if (cls[y * rw + x] === 2) h++; if (h < 8) src = keepEn; }
-      addLines(src, r, 14);
+    const optPlans = opts.map(r => {
+      let src = lang === 'en' ? keepEnO : keepHiO;
+      if (lang === 'hi') { let h = 0; for (let y = r.y0; y < r.y1; y++) for (let x = r.x0; x < r.x1; x++) if (cls[y * rw + x] === 2) h++; if (h < 8) src = keepEnO; }
+      const ls = partLines(src.ink, rw, r, contX);
+      return ls.length ? [{ kind: 'lines', src, out: flow(ls, Wt), gapAfter: 0 }] : null;
     });
-    return { plan, n };
+    return { plan, optPlans, n };
   };
   const en = build('en'), hi = build('hi');
   let hindiInk = 0; for (let i = 0; i < cls.length; i++) if (cls[i] === 2) hindiInk++;
   const hasHi = hindiInk > 150;
   if (!en.n) flags.push('English text nahi mila');
-  return { en: compose(en.plan, Wt), hi: hasHi ? compose(hi.plan, Wt) : null, flags };
+  const mk = b => ({ stem: compose(b.plan, Wt, false), opts: b.optPlans.map(p => p ? compose(p, Wt, true) : null), full });
+  return { en: mk(en), hi: hasHi ? mk(hi) : null, flags };
 }
 
 
 
-pkBanner('pdfkey_a.js load hui ✓',true);
-window.PKCore = { S: S, buildQuestion: buildQuestion };
-})();
-
-// pdfkey2.js — admin UI (pdfkey1.js ke BAAD, admin.js ke BAAD load karna)
-// Globals jo admin.js se aate hain: $, esc, sb, secs, allTests, loadTests
-function pkBanner(t,ok){try{var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;font:14px sans-serif;text-align:center;color:#fff;background:'+(ok?'#16a34a':'#dc2626');(document.body||document.documentElement).appendChild(d);setTimeout(function(){d.remove()},8000);}catch(e){}}
-(function () {
-if (!window.PKCore) { pkBanner('pdfkey_a.js load nahi hui — pdfkey_b se PEHLE lagao',false); return; }
-const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
   // ================= browser part =================
   const BUCKET = 'question-images', LET = ['A', 'B', 'C', 'D'];
   const CDN = (window.PDFIMPORT_CDN || 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/build/');
@@ -599,10 +585,10 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
   }
 
   // ---- phase 2: ek shift ke saare questions ----
-  const toBlob = (o) => new Promise(res => {
+  const toBlob = (o) => !o ? Promise.resolve(null) : new Promise(res => {
     const cv = document.createElement('canvas'); cv.width = o.w; cv.height = o.h;
     cv.getContext('2d').putImageData(new ImageData(o.rgba, o.w, o.h), 0, 0);
-    cv.toBlob(b => { cv.width = 0; res(b); }, 'image/jpeg', 0.92);
+    cv.toBlob(b => { cv.width = 0; res(b); }, 'image/webp', 0.82);
   });
 
   async function processShift(doc, shift, Wt, log) {
@@ -653,7 +639,7 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
         if (qs[pl.n] || end - pl.top < 20 * S) continue;
         const flags = [];
         const rect = { x0: 14 * S, x1: Math.min(W, 578 * S), y0: pl.top, y1: Math.round(end) };
-        const erase = [{ x0: 14 * S, x1: Math.round(pl.it.x + pl.it.w + 9 * S), y0: Math.round(pl.it.top - 5 * S), y1: Math.round(pl.it.y + 5 * S) }];
+        const erase = [{ col: true, x0: 14 * S, x1: Math.round(pl.it.x + pl.it.w + 14 * S), y0: Math.round(pl.it.top - 5 * S), y1: Math.round(pl.it.y + 5 * S) }];
         // correct answer text + uska pill
         let correct = -1;
         const ci = items.find(o => /Correct/.test(o.s) && o.y > pl.top && o.y < end);
@@ -667,7 +653,8 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
         try { r = buildQuestion(d, W, rect, erase, Wt); } catch (e) { flags.push('image error: ' + (e.message || e)); r = null; }
         if (!r) { qs[pl.n] = { n: pl.n, sec: curSec, correct, en: null, hi: null, flags }; continue; }
         r.flags.forEach(f => flags.push(f));
-        qs[pl.n] = { n: pl.n, sec: curSec, correct, en: await toBlob(r.en), hi: r.hi ? await toBlob(r.hi) : null, flags };
+        const pack = async (g) => g ? { full: g.full, stem: await toBlob(g.stem), opts: await Promise.all(g.opts.map(toBlob)) } : null;
+        qs[pl.n] = { n: pl.n, sec: curSec, correct, en: await pack(r.en), hi: await pack(r.hi), flags };
       }
       cv.width = 0; page.cleanup();
     }
@@ -675,39 +662,56 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
   }
 
   // ---- upload + tests ----
+  const errTxt = e => { try { return (e && (e.message || e.error_description)) ? e.message + (e.statusCode ? ' [' + e.statusCode + ']' : '') : JSON.stringify(e); } catch (x) { return String(e); } };
   async function putImg(path, blob) {
-    const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-    if (error) throw error;
-    return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-  }
-  async function hasHiCol() { const { error } = await sb.from('questions').select('image_url_hi').limit(1); return !error; }
-
-  async function uploadQs(qs, base, log) {
-    const todo = qs.filter(q => q.en);
-    for (let i = 0; i < todo.length; i += 4) {
-      await Promise.all(todo.slice(i, i + 4).map(async q => {
-        log(`image ${q.n}/${todo.length ? todo[todo.length - 1].n : ''}`);
-        q.urlEn = await putImg(`${base}/${q.n}-en.jpg`, q.en);
-        if (q.hi) q.urlHi = await putImg(`${base}/${q.n}-hi.jpg`, q.hi);
-      }));
+    let last;
+    for (let a = 0; a < 4; a++) {
+      try {
+        const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
+        if (!error) return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+        last = error;
+      } catch (e) { last = e; }
+      await new Promise(r => setTimeout(r, 800 * (a + 1)));
     }
+    throw new Error('upload fail (' + path + '): ' + errTxt(last));
+  }
+  const OL = ['a', 'b', 'c', 'd'];
+  async function uploadQs(qs, base, log) {
+    const tasks = [];
+    qs.forEach(q => {
+      [['en', q.en], ['hi', q.hi]].forEach(([lg, g]) => {
+        if (!g) return;
+        const f = g.full ? 'f' : 's';
+        tasks.push({ q, key: lg === 'en' ? 'urlEn' : 'urlHi', path: `${base}/${q.n}${f}-${lg}.webp`, blob: g.stem });
+        g.opts.forEach((o, i) => { if (o) tasks.push({ q, key: null, path: `${base}/${q.n}${OL[i]}-${lg}.webp`, blob: o }); });
+      });
+    });
+    let done = 0;
+    const worker = async () => {
+      while (tasks.length) {
+        const t = tasks.shift();
+        const url = await putImg(t.path, t.blob);
+        if (t.key) t.q[t.key] = url;
+        done++; if (done % 10 === 0) log(`images upload: ${done} hue`);
+      }
+    };
+    await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
   }
   async function insertTest(title, section, list, opt) {
-    const hasHi = list.some(q => q.urlHi);
-    const { data: test, error } = await sb.from('tests').insert({
-      title, section_id: section, duration_min: opt.dur, pos_marks: opt.pos, neg_marks: opt.neg, is_free: false, published: opt.pub
-    }).select('id').single();
-    if (error) throw error;
-    const rows = list.map((q, i) => {
-      const row = {
-        test_id: test.id, position: i + 1, q_text: 'Q.' + (i + 1), q_text_hi: hasHi ? 'प्रश्न ' + (i + 1) : null,
-        options: LET.slice(), options_hi: null, correct_option: q.correct >= 0 ? q.correct : 0,
-        has_diagram: true, image_url: q.urlEn || null,
-        explanation: null, explanation_hi: null, explanation_image_url: null, topic: null, difficulty: null
-      };
-      if (opt.hiCol) row.image_url_hi = q.urlHi || q.urlEn || null;   // Hindi nahi hai to English hi dikhegi
-      return row;
-    });
+    const body = { title, section_id: section, duration_min: opt.dur, pos_marks: opt.pos, neg_marks: opt.neg, is_free: false, published: opt.pub };
+    if (opt.cfg) body.sec_cfg = opt.cfg;
+    let r = await sb.from('tests').insert(body).select('id').single();
+    if (r.error && opt.cfg && /sec_cfg/.test(r.error.message || '')) {
+      throw new Error('tests table me sec_cfg column nahi hai. Supabase SQL me chalao: alter table tests add column if not exists sec_cfg jsonb;');
+    }
+    if (r.error) throw r.error;
+    const test = r.data;
+    const rows = list.map((q, i) => ({
+      test_id: test.id, position: i + 1, q_text: 'Q.' + (i + 1), q_text_hi: q.urlHi ? 'प्रश्न ' + (i + 1) : null,
+      options: LET.slice(), options_hi: q.urlHi ? LET.slice() : null, correct_option: q.correct >= 0 ? q.correct : 0,
+      has_diagram: true, image_url: q.urlEn || null,
+      explanation: null, explanation_hi: null, explanation_image_url: null, topic: null, difficulty: null
+    }));
     for (let i = 0; i < rows.length; i += 100) {
       const { error: e2 } = await sb.from('questions').insert(rows.slice(i, i + 100));
       if (e2) throw e2;
@@ -735,8 +739,9 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
 <pre id="pk-list" style="white-space:pre-wrap;font-size:12px;margin:6px 0"></pre>
 <div class="row"><label>Shift numbers (jaise 1-3,5) <input id="pk-range" placeholder="1"></label><label>Exam naam <input id="pk-exam" value="SSC CGL Tier-1 2026"></label></div>
 <div class="row"><label>Full test (100 Qs) kis section me <select id="pk-full"></select></label><label>Time (min) <input id="pk-dfull" type="number" value="60" style="width:70px"></label></div>
+<div class="row"><label><input type="checkbox" id="pk-lock" checked> Full test me har section ka alag time (lock)</label><label>Minutes (section-wise) <input id="pk-mins" value="15,15,15,15" style="width:120px"></label></div>
 <div class="row"><label>Section-wise tests kis section me <select id="pk-sec"></select></label><label>Time har section test (min) <input id="pk-dsec" type="number" value="15" style="width:70px"></label></div>
-<div class="row"><label>Image width (chhota = bada font) <input id="pk-w" type="number" value="1100" style="width:80px"></label><label><input type="checkbox" id="pk-pub"> Seedha publish karo</label><button class="btn-s" id="pk-go">2) Tests banao</button></div>
+<div class="row"><label>Image width (chhota = bada font) <input id="pk-w" type="number" value="900" style="width:80px"></label><label><input type="checkbox" id="pk-pub"> Seedha publish karo</label><button class="btn-s" id="pk-go">2) Tests banao</button></div>
 <pre id="pk-log" style="white-space:pre-wrap;font-size:12px;margin-top:8px"></pre>`;
     anchor.insertAdjacentElement('afterend', box);
     const log = m => { $('pk-log').textContent = m; }, addLog = m => { $('pk-log').textContent += '\n' + m; };
@@ -774,15 +779,13 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
       if (!full && !secSel) return alert('Kam se kam ek chuno: Full test ya Section-wise ka section');
       const pick = parseRange($('pk-range').value, scanned.shifts.length);
       if (!pick.length) return alert('Shift numbers sahi likho (jaise 1-3,5)');
-      const Wt = Math.max(600, Math.min(2200, +$('pk-w').value || 1100));
+      const Wt = Math.max(600, Math.min(2200, +$('pk-w').value || 900));
       const exam = $('pk-exam').value.trim() || 'SSC CGL';
       const base = { pos: +$('t-pos').value, neg: Math.abs(+$('t-neg').value || 0), pub: $('pk-pub').checked };
       if (!confirm(`${pick.length} shift(s): ${pick.join(', ')}\n${full ? '• Full test banega\n' : ''}${secSel ? '• Section-wise tests banenge\n' : ''}\nSahi hai?`)) return;
       const btn = $('pk-go'); btn.disabled = true;
       try {
-        const hiCol = await hasHiCol(); base.hiCol = hiCol;
-        if (!hiCol) log('⚠ questions table me image_url_hi column nahi hai — Hindi images save nahi hongi.\nSQL: alter table questions add column image_url_hi text;\n');
-        const exist = new Set((allTests || []).map(t => t.title));
+                const exist = new Set((allTests || []).map(t => t.title));
         let made = 0, report = '';
         for (const no of pick) {
           const sh = scanned.shifts[no - 1], head = `${exam} · ${sh.date} · Shift ${sh.shift}`;
@@ -796,23 +799,30 @@ const S = PKCore.S, buildQuestion = PKCore.buildQuestion;
           const bad = qs.filter(q => q.flags.length);
           report += `\n${head}: ${qs.length} questions` + (bad.length ? ` (⚠ ${bad.length} check: ` + bad.slice(0, 8).map(q => 'Q' + q.n + ' ' + q.flags[0]).join('; ') + ')' : '');
           if (!todo.length) { report += ' — sab tests pehle se hain'; continue; }
-          await uploadQs(qs, `pdfkey/${Date.now()}-${no}`, m => { $('pk-log').textContent = report + `\n[${head}] ` + m; });
+          try { await uploadQs(qs, `pk2/${Date.now()}-${no}`, m => { $('pk-log').textContent = report + `\n[${head}] ` + m; }); }
+          catch (e) { report += `\n  ❌ ${head}: ${errTxt(e)}`; log(report); continue; }
           for (const w of todo) {
             const list = w.kind === 'full' ? qs : qs.filter(q => q.sec === w.sec);
-            try { await insertTest(w.title, w.section, list, { ...base, dur: w.dur }); made++; report += `\n  ✅ ${w.title} (${list.length} Qs)`; }
-            catch (e) { report += `\n  ❌ ${w.title}: ${e.message || e}`; }
+            let cfg = null, dur = w.dur;
+            if (w.kind === 'full' && $('pk-lock').checked && order.length > 1) {
+              const mins = $('pk-mins').value.split(',').map(x => +x.trim()).filter(x => x > 0);
+              cfg = order.map((sn, i) => ({ name: secShort(sn), mins: mins[i] || mins[mins.length - 1] || 15, n: qs.filter(q => q.sec === sn).length }));
+              dur = cfg.reduce((a, c) => a + c.mins, 0);
+            }
+            try { await insertTest(w.title, w.section, list, { ...base, dur, cfg }); made++; report += `\n  ✅ ${w.title} (${list.length} Qs)`; }
+            catch (e) { report += `\n  ❌ ${w.title}: ${errTxt(e)}`; }
           }
           log(report);
         }
         log(report + `\n\n${made} tests ban gaye. ⚠ wale questions Questions edit se check kar lena.`);
         loadTests();
-      } catch (e) { addLog('Error: ' + (e.message || e)); }
+      } catch (e) { addLog('Error: ' + errTxt(e)); }
       finally { btn.disabled = false; }
     };
   }
 
   window.PdfKey = { scanPdf, processShift };
-  const go = () => { if (document.getElementById('t-add')) { build(); pkBanner('pdfkey_b.js: naya box ban gaya ✓', !!document.getElementById('pk-box')); } else pkBanner('pdfkey_b.js load hui par t-add nahi mila', false); };
+  const go = () => { if (document.getElementById('t-add')) { build(); pkBanner(document.getElementById('pk-box') ? 'Answer-key PDF importer ready ✓' : 'pdfkey: box nahi bana', !!document.getElementById('pk-box')); } };
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', go); else go();
-})();
 
+})();
