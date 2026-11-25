@@ -5,12 +5,13 @@
 .atabs{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:20;padding:8px;margin:0 0 12px;background:var(--card,#fff);border:1px solid var(--line,#ddd);border-radius:12px}
 .atabs button{flex:1 0 auto;padding:11px 14px;border:1px solid var(--line,#ddd);border-radius:9px;background:transparent;color:var(--text,inherit);font:600 14px/1 inherit;cursor:pointer;white-space:nowrap}
 .atabs button.on{background:var(--brand,#2f6fed);border-color:var(--brand,#2f6fed);color:#fff}
+#t-list,#q-list,#sec-list,#rv-list,#nv-list{max-height:calc(100vh - 300px);overflow:auto}.trow{flex-wrap:wrap}
 </style></head>
 <body class="admin">
 <div class="topbar"><a class="logo" href="dashboard.html">Quantify · Admin</a><div class="nav-r"><button class="theme-btn" type="button">🌙</button></div></div>
 <div class="wrap" id="main" style="display:none">
 
-<div class="box" data-tab="sec"><h3>Sections (dashboard categories)</h3>
+<div class="box" data-tab="sec"><h3>Cards (dashboard) aur Subcards</h3>
 <div class="row"><input type="text" id="sec-name" placeholder="Naya section naam (e.g. SSC CGL Maths Tier-I)"><button class="btn-s" id="sec-add">Add</button></div>
 <div id="sec-list"></div></div>
 
@@ -58,16 +59,16 @@
 <script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>')</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script><script src="pdfimport.js?v=3"></script>
+<script src="supabase.js"></script><script src="parse.js"></script><script src="admin.js"></script><script src="admin-pro.js?v=2"></script><script src="admin-pro2.js?v=1"></script><script src="pdfimport.js?v=3"></script><script src="pdfgen.js?v=1"></script>
 <script>
 (function () {
   var wrap = document.getElementById('main');
-  var TABS = [['sec', '📁 Sections'], ['test', '📝 Tests'], ['imp', '📥 Import'], ['q', '✏️ Questions']];
+  var TABS = [['sec', '📁 Sections'], ['test', '📝 Tests'], ['imp', '📥 Import'], ['q', '✏️ Questions'], ['nav', '🧭 Sidebar'], ['rv', '⭐ Reviews']];
   var cur = localStorage.getItem('adm-tab'); if (!TABS.some(function (t) { return t[0] === cur; })) cur = 'sec';
   var bar = document.createElement('div'); bar.className = 'atabs'; bar.id = 'atabs';
   bar.innerHTML = TABS.map(function (t) { return '<button type="button" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
   wrap.insertBefore(bar, wrap.firstChild);
-  function tabOf(el) { return el.dataset.tab || (el.id === 'pi-box' || el.id === 'pk-box' ? 'imp' : null); }
+  function tabOf(el) { return el.dataset.tab || (el.id === 'pi-box' || el.id === 'pk-box' ? 'imp' : el.id === 'rv-box' ? 'rv' : null); }
   function apply() {
     Array.prototype.forEach.call(wrap.children, function (b) {
       if (b === bar || !b.classList.contains('box')) return;
@@ -84,3 +85,4 @@
 })();
 </script>
 </body></html>
+  
