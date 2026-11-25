@@ -13,10 +13,11 @@
   const first = (all || []).find(x => x.attempt_no === 1);
   $('ttl').textContent = test.title;
   tabs('a', at.test_id, a);
+  if (test.key_release_at && new Date(test.key_release_at) > Date.now()) document.querySelectorAll('#tabs a').forEach(x => { if (/solution|answer|key/i.test(x.href + x.textContent)) { x.removeAttribute('href'); x.style.opacity = '.5'; x.onclick = e => { e.preventDefault(); alert('Answer key ' + new Date(test.key_release_at).toLocaleString('en-GB') + ' ko khulegi'); }; } });
 
   const sc = +at.score, tot = st.q_count * test.pos_marks;
   const attempted = at.correct + at.wrong;
-  const acc = attempted ? at.correct / attempted * 100 : 0;
+  const acc = attempted ? Math.min(100, Math.max(0, at.correct / attempted * 100)) : 0;
   const canRe = (all || []).length === 1 && at.attempt_no === 1;
   const pct = tot > 0 ? Math.max(0, Math.min(100, sc / tot * 100)) : 0;
   const line = (ico, cls, lbl, val) => `<div class="ln"><span class="ico ${cls}">${ico}</span><b>${lbl}</b><span class="v" style="font-size:17px">${val}</span></div>`;
@@ -32,9 +33,9 @@
       <div class="r2"><span>Average Score: <b>${num(r.avg_score)}</b></span><span>Best Score: <b>${num(r.best_score)}</b></span></div>
     </div>
     <div class="c3">
-      ${line('📊', '', 'Percentile', num(r.percentile) + ' %')}
+      ${line('📊', '', 'Percentile', num(Math.max(0, Math.min(100, +r.percentile || 0))) + ' %')}
       ${line('🎯', 'g', 'Accuracy', num(acc) + ' %')}
-      ${line('📝', 'b', 'Qs. Attempted', `${attempted}<small>/${st.q_count}</small>`)}
+      ${line('📝', 'b', 'Qs. Attempted', `${attempted}<small>/${Math.max(st.q_count, attempted)}</small>`)}
     </div>
     <div class="qsh">DETAILED BREAKDOWN</div>
     <div class="c3">
