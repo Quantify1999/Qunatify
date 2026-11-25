@@ -37,16 +37,31 @@
     const lim = Math.max(3, pages.length * 0.4);
     return pages.map(p => p.filter((l, i) => !(edge(p, i) && !skip(l) && l.length < 90 && cnt[key(l)] >= lim)));
   }
-  function splitInline(l) {                              // "(a) 5 (b) 6 (c) 7 (d) 8"  ya  "a) go b) went c) gone d) going"
-    const re = /(?:^|\s)\(?([a-dA-D])\)/g, idx = []; let m;
-    while ((m = re.exec(l))) { const ws = /^\s/.test(m[0]) ? 1 : 0; idx.push([m.index + ws, m[1].toUpperCase().charCodeAt(0) - 65, m[0].length - ws]); }
-    if (idx.length < 2 || !idx.every((x, i) => x[1] === i)) return null;
-    return idx.map((x, i) => [x[1], l.slice(x[0] + x[2], i + 1 < idx.length ? idx[i + 1][0] : l.length).trim()]);
+  function chainSplit(l, e) {                           // line me expected option (e) se shuru hoke (a)(b)(c)(d) chain todo
+    const re = /(?:^|\s)\(?([a-dA-D])\)/g, ms = []; let m;
+    while ((m = re.exec(l))) { const ws = /^\s/.test(m[0]) ? 1 : 0; ms.push({ s: m.index + ws, len: m[0].length - ws, k: m[1].toUpperCase().charCodeAt(0) - 65 }); }
+    const i0 = ms.findIndex(x => x.k === e); if (i0 < 0) return null;
+    const ch = [ms[i0]]; for (let j = i0 + 1; j < ms.length; j++) if (ms[j].k === ch[ch.length - 1].k + 1) ch.push(ms[j]);
+    return { pre: l.slice(0, ch[0].s).trim(), parts: ch.map((x, i) => [x.k, l.slice(x.s + x.len, i + 1 < ch.length ? ch[i + 1].s : l.length).trim()]) };
   }
-  const KH = /^\s*(answer\s*keys?|ans\.?\s*key|answers?|उत्तर(?:\s*कुंजी)?|उत्तरमाला)(?=\s|[:\-–]|$)\s*[:\-–]?\s*(.*)$/i;
+  const splitInline = l => { const r = chainSplit(l, 0); return r && !r.pre && r.parts.length > 1 ? r.parts : null; };
+  const KH = /^\s*(answer\s*keys?|ans\.?\s*key|answer\s*sheet|answers?|key|उत्तर(?:\s*कुंजी)?|उत्तरमाला)(?=\s|[:\-–]|$)\s*[:\-–]?\s*(.*)$/i;
   const KPAIR = /\d{1,3}\s*[\.\-–:\)]*\s*\(?[A-Da-d]\)?(?![A-Za-z])/;
   const Q1 = /^\s*(?:Q(?:uestion)?\.?\s*)?(\d{1,3})\s*[\.\):\-]\s*(.*)$/i;
-  function parseMCQ(lines) {
+  const KPAIRG = /\d{1,3}\s*[\.\-–:\)]*\s*\(?[A-Da-d]\)?(?![A-Za-z])/g;
+  function tailKey(lines) {                              // heading ke bina, PDF ke aakhir me sirf key-jaisi lines ka block
+    let i = lines.length - 1, pairs = 0;
+    for (; i >= 0; i--) {
+      const l = lines[i].trim(); if (!l) continue;
+      const p = (l.match(KPAIRG) || []).length, rest = l.replace(KPAIRG, '').replace(/[\s,;|\-–.:()]/g, '');
+      if (p >= 1 && rest.length <= 3) pairs += p; else break;
+    }
+    if (pairs < 10) return null;
+    let start = i + 1; if (i >= 0 && KH.test(lines[i].trim()) && !(lines[i].match(KH)[2] || '').trim()) start = i;
+    return start;
+  }
+  function parseMCQ(lines0) {
+    const ts = tailKey(lines0), lines = ts == null ? lines0 : lines0.slice(0, ts), tailKeyLines = ts == null ? [] : lines0.slice(ts);
     const qs = [], keyLines = []; let cur = null, mode = 'q', last = -1, expect = 1, inKey = false;
     const filled = () => cur ? cur.opts.filter(Boolean).length : 0;
     const start = (n, t) => { cur = { n, q: t || '', opts: [] }; qs.push(cur); mode = 'q'; last = -1; expect = n + 1; };
@@ -64,15 +79,20 @@
       const m = l.match(Q1);
       if (m && !/^\d/.test(m[2])) {
         const n = +m[1];
-        if (n === expect || (!qs.length && n <= 3) || (n > expect && n <= expect + 3 && filled() >= 2) || (n === 1 && qs.length >= 5 && filled() >= 2)) { start(n, m[2]); continue; }
+        if (n === expect || !qs.length || (n > expect && n <= expect + 3 && filled() >= 2) || (n === 1 && qs.length >= 5 && filled() >= 2)) { start(n, m[2]); continue; }
+        if (n === 1 && qs.length < 5 && filled() < 2) { qs.pop(); start(1, m[2]); continue; }   // pehle wali "question" galat shuruaat thi
       }
       if (!cur) continue;
-      const inl = splitInline(l);
-      if (inl) { inl.forEach(([k, t]) => { cur.opts[k] = t; last = k; }); mode = 'o'; continue; }
+      const cs = chainSplit(l, mode === 'o' ? last + 1 : 0);
+      if (cs) {
+        if (cs.pre) { if (mode === 'q') cur.q += (cur.q ? ' ' : '') + cs.pre; else cur.opts[last] = ((cur.opts[last] || '') + ' ' + cs.pre).trim(); }
+        cs.parts.forEach(([k, t]) => { cur.opts[k] = t; last = k; }); mode = 'o'; continue;
+      }
       const om = l.match(/^\(?([A-Da-d])[\)\.]\s*(.*)$/);
       if (om) { const k = om[1].toUpperCase().charCodeAt(0) - 65; if (k === cur.opts.length || (mode === 'o' && k > last)) { cur.opts[k] = om[2]; last = k; mode = 'o'; continue; } }
       if (mode === 'q') cur.q += (cur.q ? ' ' : '') + l; else if (last >= 0) cur.opts[last] = ((cur.opts[last] || '') + ' ' + l).trim();
     }
+    keyLines.push(...tailKeyLines.filter(x => !KH.test(x.trim()) || (x.match(KH)[2] || '').trim()));
     return { qs: qs.map(q => ({ n: q.n, q: q.q.trim(), opts: [0, 1, 2, 3].map(i => (q.opts[i] || '').trim()) })).filter(q => q.q && q.opts.filter(Boolean).length >= 2), keyLines };
   }
   function parseKeySeq(text) {                           // answer key -> [ {n:'A'}, ... ] (restart pe naya set)
@@ -110,7 +130,7 @@
     const sc = n => (/flash-lite/i.test(n) ? 0 : /flash/i.test(n) ? 1 : 2) + (/preview|exp|latest/i.test(n) ? 0.5 : 0);
     return names.filter(n => /gemini/i.test(n) && !bad.test(n)).sort((a, b) => sc(a) - sc(b) || b.localeCompare(a));
   }
-  window.PGen = { linesFrom, dropRepeated, splitInline, parseMCQ, parseKeySeq, markSets, loose, rankModels };
+  window.PGen = { linesFrom, dropRepeated, splitInline, chainSplit, parseMCQ, parseKeySeq, markSets, loose, rankModels };
   if (typeof document === 'undefined' || !document.getElementById) return;
 
   // ================= PDF / GEMINI =================
