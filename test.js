@@ -30,6 +30,7 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = '
     location.href = 'dashboard.html'; return;
   }
   if (!t) { alert('Test nahi mila'); location.href = 'dashboard.html'; return; }
+  if (((t.starts_at && new Date(t.starts_at) > Date.now()) || (t.ends_at && new Date(t.ends_at) < Date.now())) && !Object.keys(a.answers || {}).length) { alert('Ye test abhi available nahi hai (schedule ke bahar).'); location.href = 'dashboard.html'; return; }
   test = t; att = a;
   if (!q || !q.length) { alert('Is test mein abhi questions nahi hain'); location.href = 'dashboard.html'; return; }
   qs = q; hasHi = q.some(x => x.q_text_hi);
