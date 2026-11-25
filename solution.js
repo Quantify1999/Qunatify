@@ -25,12 +25,13 @@ addEventListener('resize', scaleOpts);
   if (!await requireAuth()) return;
   if (!T) { location.href = 'dashboard.html'; return; }
   const [{ data: t }, { data: at }, { data: s }, st] = await Promise.all([
-    sb.from('tests').select('title,pos_marks,neg_marks').eq('id', T).single(),
+    sb.from('tests').select('title,pos_marks,neg_marks,key_release_at').eq('id', T).single(),
     sb.from('attempts').select('id,attempt_no,answers,q_times').eq('test_id', T).eq('status', 'submitted').order('attempt_no'),
     sb.rpc('get_solutions', { t: T }),
     sb.rpc('question_stats', { t: T })
   ]);
   if (!at || !at.length || !s || !s.length) { alert('Solutions test submit karne ke baad milte hain'); location.href = 'dashboard.html'; return; }
+  if (t && t.key_release_at && new Date(t.key_release_at) > Date.now()) { alert('Answer key ' + new Date(t.key_release_at).toLocaleString('en-GB') + ' ko khulegi'); location.href = 'dashboard.html'; return; }
   test = t; atts = at; sols = s;
   ((st && st.data) || []).forEach(x => stats[x.qid] = x);
   cur = atts.find(x => x.id === qp('a')) || atts[0];
@@ -74,7 +75,7 @@ function render() {
   }
 
   // % got this right (hamesha) + Correct option number (sirf Show Answer ON)
-  const pct = sx && sx.pct_correct !== null && sx.pct_correct !== undefined ? `<b>${Math.round(sx.pct_correct)}%</b> got this right` : '';
+  const pct = sx && sx.pct_correct !== null && sx.pct_correct !== undefined ? `<b>${Math.max(0, Math.min(100, Math.round(sx.pct_correct)))}%</b> got this right` : '';
   $('stat').innerHTML = `<span>${showAns ? `Correct Answers Is: <b>${q.correct_option + 1}</b>` : ''}</span><span>${pct}</span>`;
   const exImg = q.explanation_image_url ? `<img src="${esc(q.explanation_image_url)}" alt="solution" style="max-width:100%;display:block;margin-top:8px;border-radius:8px">` : '';
   $('ex').innerHTML = (showAns && (ex || exImg)) ? `<div class="exb"><b>Solution</b>${ex ? '<br>' + esc(ex) : ''}${exImg}</div>` : '';
