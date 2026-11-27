@@ -43,7 +43,7 @@
   $('t-list').insertAdjacentHTML('beforebegin', '<div class="row"><input id="t-q" placeholder="🔍 Test dhundo" style="flex:1"><select id="t-f" style="width:auto"></select></div>');
   window.loadTests = async function () {
     const [{ data: tests }, { data: qs }, { data: sx }] = await Promise.all([sb.from('tests').select('*').is('deleted_at', null).order('created_at'), sb.from('questions').select('test_id'), sb.from('sections').select('*').order('position')]);
-    allTests = tests || []; secs = sx || []; tcnt = {}; (qs || []).forEach(q => tcnt[q.test_id] = (tcnt[q.test_id] || 0) + 1);
+    allTests = tests || []; secs = sx || []; tcnt = {}; (qs || []).forEach(q => tcnt[q.test_id] = (tcnt[q.test_id] || 0) + 1); window.__tcnt = tcnt;
     $('t-sec').innerHTML = '<option value="">— Card chuno —</option>' + secOpts(null);
     $('t-f').innerHTML = '<option value="">Saare cards</option><option value="-">Bina card</option>' + secOpts(null);
     renderSecs();
@@ -67,7 +67,7 @@
       <button class="btn-s ghost" onclick="secTime('${t.id}')">⏱ Sections</button>
       <button class="btn-s ghost" onclick="tog('${t.id}','published',${!t.published})">${t.published ? '🟢 Live' : '⚪ Draft'}</button>
       <button class="btn-s ghost" onclick="tog('${t.id}','is_free',${!t.is_free})">${t.is_free ? 'FREE' : 'PAID'}</button>
-      <button class="btn-s ghost" onclick="dupTest('${t.id}')">⧉</button><button class="btn-s ghost" onclick="moreTest('${t.id}')">⚙</button><button class="btn-s ghost" onclick="lbPdf('${t.id}')">🏆</button>
+      <button class="btn-s ghost" onclick="dupTest('${t.id}')">⧉</button><button class="btn-s ghost" onclick="moreTest('${t.id}')">⚙</button><button class="btn-s ghost" onclick="lbPdf('${t.id}')">🏆</button><button class="btn-s ghost" onclick="adTest('${t.id}')">📢</button>
       <button class="btn-s ghost" onclick="dlXlsx('${t.id}')">📊</button><button class="btn-s ghost" onclick="dlPpt('${t.id}')">📽</button>
       <button class="btn-s red" onclick="delTest('${t.id}')">✕</button></div>`).join('') || 'Koi test nahi';
   };
