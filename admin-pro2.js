@@ -45,28 +45,43 @@
     };
   };
 
-  // ---------- Leaderboard PDF (print -> Save as PDF; Hindi naam bhi sahi) ----------
+  // ---------- Leaderboard PDF (seedha download; Hindi naam bhi sahi) ----------
+  const loadJs = src => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const x = document.createElement('script'); x.src = src; x.onload = ok; x.onerror = () => no(new Error('PDF library load nahi hui (internet/CSP check karo)')); document.head.appendChild(x); });
   window.lbPdf = async id => {
     const t = allTests.find(x => x.id === id); if (!t) return;
     const lim = prompt('Top kitne students? (10 / 50 / all)', 'all'); if (lim === null) return;
-    const w = window.open('', '_blank'); if (!w) return alert('Popup allow karo');
-    w.document.write('Leaderboard ban raha hai...');
-    const { data: at, error } = await sb.from('attempts').select('*').eq('test_id', id).eq('status', 'submitted').eq('attempt_no', 1);
-    if (error) { w.close(); return alert(error.message); }
-    if (!at || !at.length) { w.close(); return alert('Is test ke abhi koi attempts nahi hain'); }
-    const uk = ['user_id', 'profile_id', 'user'].find(k => k in at[0]);
-    const ids = [...new Set(at.map(x => x[uk]).filter(Boolean))], names = {};
-    for (let i = 0; i < ids.length; i += 80) { const { data } = await sb.from('profiles').select('id,name').in('id', ids.slice(i, i + 80)); (data || []).forEach(p => names[p.id] = p.name); }
-    at.sort((a, b) => b.score - a.score || (a.time_taken || 0) - (b.time_taken || 0));
-    const n = /^\d+$/.test(lim.trim()) ? +lim : at.length, tot = (tcnt[id] || 0) * t.pos_marks;
-    const mm = s => Math.floor((s || 0) / 60) + ':' + String((s || 0) % 60).padStart(2, '0');
-    const rows = at.slice(0, n).map((a, i) => { const att = a.correct + a.wrong; return `<tr class="${i < 3 ? 't' + i : ''}"><td>${i + 1}</td><td>${esc(names[a[uk]] || 'Student')}</td><td>${(+a.score).toFixed(2).replace(/\.?0+$/, '')}</td><td>${a.correct}</td><td>${a.wrong}</td><td>${a.unattempted}</td><td>${att ? Math.round(a.correct / att * 100) : 0}%</td><td>${mm(a.time_taken)}</td></tr>`; }).join('');
-    w.document.open();
-    w.document.write(`<!DOCTYPE html><meta charset="utf-8"><title>${esc(t.title)} Leaderboard</title><style>body{font:13px system-ui,sans-serif;margin:24px;color:#111}h1{margin:0;font-size:22px;color:#2f6fed}h2{margin:2px 0 4px;font-size:17px}p{margin:0 0 12px;color:#555}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px 8px;text-align:center}td:nth-child(2){text-align:left}th{background:#2f6fed;color:#fff}.t0{background:#fff3c4;font-weight:700}.t1{background:#e8ecf2;font-weight:700}.t2{background:#f7e0cd;font-weight:700}@media print{@page{size:A4;margin:12mm}}</style>
-      <h1>Quantify</h1><h2>${esc(t.title)} · Leaderboard</h2><p>${at.length} students · Max marks ${tot} · ${new Date().toLocaleDateString('en-GB')}</p>
-      <table><tr><th>Rank</th><th>Naam</th><th>Score</th><th>Sahi</th><th>Galat</th><th>Skip</th><th>Accuracy</th><th>Time</th></tr>${rows}</table>`);
-    w.document.close(); setTimeout(() => w.print(), 500);
-    if (!Object.keys(names).length) alert('Naam nahi mile. admin-upgrade.sql wali "admin read" policies chalao.');
+    const msg = document.createElement('div'); msg.textContent = '⏳ Leaderboard PDF ban rahi hai...';
+    msg.style.cssText = 'position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:10px;z-index:9999;font-size:14px';
+    document.body.appendChild(msg);
+    try {
+      const { data: at, error } = await sb.from('attempts').select('*').eq('test_id', id).eq('status', 'submitted').eq('attempt_no', 1);
+      if (error) throw error;
+      if (!at || !at.length) throw new Error('Koi submitted attempt nahi mila. Agar students ne test diya hai to admin-upgrade.sql dobara chalao.');
+      const uk = ['user_id', 'profile_id', 'user'].find(k => k in at[0]);
+      const ids = [...new Set(at.map(x => x[uk]).filter(Boolean))], names = {};
+      for (let i = 0; i < ids.length; i += 80) { const { data } = await sb.from('profiles').select('id,name').in('id', ids.slice(i, i + 80)); (data || []).forEach(p => names[p.id] = p.name); }
+      at.sort((x, y) => y.score - x.score || (x.time_taken || 0) - (y.time_taken || 0));
+      const n = /^\d+$/.test(lim.trim()) ? +lim : at.length, tot = (tcnt[id] || 0) * t.pos_marks;
+      const mm = s => Math.floor((s || 0) / 60) + ':' + String((s || 0) % 60).padStart(2, '0');
+      const rows = at.slice(0, n).map((x, i) => { const att = x.correct + x.wrong; return `<tr style="${i === 0 ? 'background:#fff3c4;font-weight:700' : i === 1 ? 'background:#e8ecf2;font-weight:700' : i === 2 ? 'background:#f7e0cd;font-weight:700' : ''}"><td>${i + 1}</td><td style="text-align:left">${esc(names[x[uk]] || 'Student')}</td><td>${(+x.score).toFixed(2).replace(/\.?0+$/, '')}</td><td>${x.correct}</td><td>${x.wrong}</td><td>${x.unattempted}</td><td>${att ? Math.round(x.correct / att * 100) : 0}%</td><td>${mm(x.time_taken)}</td></tr>`; }).join('');
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;padding:28px;font:13px system-ui,sans-serif;color:#111;box-sizing:border-box';
+      box.innerHTML = `<style>#lbx table{border-collapse:collapse;width:100%}#lbx th,#lbx td{border:1px solid #ccc;padding:6px 8px;text-align:center}#lbx th{background:#2f6fed;color:#fff}</style><div id="lbx"><div style="font-size:24px;font-weight:800;color:#2f6fed">Quantify</div><div style="font-size:18px;font-weight:700;margin:2px 0">${esc(t.title)} · Leaderboard</div><div style="color:#555;margin-bottom:12px">${at.length} students · Max marks ${tot} · ${new Date().toLocaleDateString('en-GB')}</div><table><tr><th>Rank</th><th>Naam</th><th>Score</th><th>Sahi</th><th>Galat</th><th>Skip</th><th>Accuracy</th><th>Time</th></tr>${rows}</table></div>`;
+      document.body.appendChild(box);
+      const canvas = await html2canvas(box, { scale: 2, backgroundColor: '#ffffff' }); box.remove();
+      const pdf = new window.jspdf.jsPDF('p', 'pt', 'a4'), pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+      const pageH = Math.floor(canvas.width * ph / pw); let y = 0, first = true;
+      while (y < canvas.height) {
+        const c2 = document.createElement('canvas'); c2.width = canvas.width; c2.height = Math.min(pageH, canvas.height - y);
+        c2.getContext('2d').drawImage(canvas, 0, y, canvas.width, c2.height, 0, 0, canvas.width, c2.height);
+        if (!first) pdf.addPage(); pdf.addImage(c2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, c2.height * pw / canvas.width); y += pageH; first = false;
+      }
+      pdf.save((t.title || 'test').replace(/[^\w\u0900-\u097F]+/g, '-') + '-leaderboard.pdf');
+      if (!Object.keys(names).length) alert('PDF ban gayi, par naam nahi mile ("Student" likha hai). admin-upgrade.sql chalao.');
+    } catch (e) { alert('Leaderboard nahi bana: ' + (e.message || e)); }
+    finally { msg.remove(); }
   };
 
   // ---------- Duplicate check (Excel upload) ----------
