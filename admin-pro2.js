@@ -61,7 +61,7 @@
       const ids = [...new Set(at.map(x => x[uk]).filter(Boolean))], names = {};
       for (let i = 0; i < ids.length; i += 80) { const { data } = await sb.from('profiles').select('id,name').in('id', ids.slice(i, i + 80)); (data || []).forEach(p => names[p.id] = p.name); }
       at.sort((x, y) => y.score - x.score || (x.time_taken || 0) - (y.time_taken || 0));
-      const n = /^\d+$/.test(lim.trim()) ? +lim : at.length, tot = (tcnt[id] || 0) * t.pos_marks;
+      const n = /^\d+$/.test(lim.trim()) ? +lim : at.length, tot = ((window.__tcnt || {})[id] || 0) * t.pos_marks;
       const mm = s => Math.floor((s || 0) / 60) + ':' + String((s || 0) % 60).padStart(2, '0');
       const rows = at.slice(0, n).map((x, i) => { const att = x.correct + x.wrong; return `<tr style="${i === 0 ? 'background:#fff3c4;font-weight:700' : i === 1 ? 'background:#e8ecf2;font-weight:700' : i === 2 ? 'background:#f7e0cd;font-weight:700' : ''}"><td>${i + 1}</td><td style="text-align:left">${esc(names[x[uk]] || 'Student')}</td><td>${(+x.score).toFixed(2).replace(/\.?0+$/, '')}</td><td>${x.correct}</td><td>${x.wrong}</td><td>${x.unattempted}</td><td>${att ? Math.round(x.correct / att * 100) : 0}%</td><td>${mm(x.time_taken)}</td></tr>`; }).join('');
       await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
